@@ -21,7 +21,7 @@ You can install the development version of `KronaR` from GitHub (once uploaded) 
 # If you don't have devtools installed:
 # install.packages("devtools")
 
-devtools::install_github("yourusername/KronaR")
+devtools::install_github("irycisBioinfo/KronaR")
 ```
 
 ---
