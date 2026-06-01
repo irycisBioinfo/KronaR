@@ -4,27 +4,23 @@
 #'
 #' @param df A data frame with hierarchical columns (character or factor) and a numeric count column.
 #' @param count_col Name or index of the column containing counts. If NULL, the first numeric column is used.
-#' @param color_col Name or index of the column containing custom hex/RGB colors (e.g. "#FF5733"). If NULL, colors are dynamically assigned by Krona.
+#' @param fill_col Name or index of the column containing fill values (colors, numeric gradients, or discrete categories). If NULL, colors are dynamically assigned by Krona.
+#' @param fill_palette Optional custom color palette. For numeric columns, a vector of colors defining a gradient. For discrete columns, a vector of colors or name of a palette.
 #' @param root_name Name of the root node. Default is "Root".
 #' @param dataset_name Name of the dataset. Default is "Dataset".
 #' @param collapse Logical. If TRUE (default), initial rendering collapses the hierarchy.
 #' @return A character string containing the Krona XML.
 #' @export
-kronar_xml <- function(df, count_col = NULL, color_col = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE) {
+kronar_xml <- function(df, count_col = NULL, fill_col = NULL, fill_palette = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE) {
   # Validate and parse data frame
-  parsed <- validate_and_parse_df(df, count_col, color_col)
+  parsed <- validate_and_parse_df(df, count_col, fill_col)
   hier <- parsed$hier
   counts <- parsed$counts
 
-  # Extract colors if color_col is provided
+  # Resolve colors if fill_col is provided
   colors <- NULL
-  if (!is.null(color_col)) {
-    if (is.character(color_col)) {
-      colors <- as.character(df[[color_col]])
-    } else if (is.numeric(color_col)) {
-      colors <- as.character(df[[as.integer(color_col)]])
-    }
-    colors[is.na(colors)] <- ""
+  if (!is.null(fill_col)) {
+    colors <- resolve_fill_colors(df, fill_col, fill_palette)
   }
 
   # Node environment constructor helper
@@ -221,14 +217,15 @@ kronar_html <- function(xml_data) {
 #' @param df A data frame.
 #' @param file Path to the output HTML file.
 #' @param count_col Name or index of the count column.
-#' @param color_col Name or index of the color column.
+#' @param fill_col Name or index of the fill column.
+#' @param fill_palette Optional custom color palette.
 #' @param root_name Name of the root node.
 #' @param dataset_name Name of the dataset.
 #' @param collapse Logical. If TRUE, initial rendering collapses the hierarchy.
 #' @return The file path to the written HTML file, invisibly.
 #' @export
-kronar_write <- function(df, file, count_col = NULL, color_col = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE) {
-  xml_data <- kronar_xml(df, count_col = count_col, color_col = color_col, root_name = root_name, dataset_name = dataset_name, collapse = collapse)
+kronar_write <- function(df, file, count_col = NULL, fill_col = NULL, fill_palette = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE) {
+  xml_data <- kronar_xml(df, count_col = count_col, fill_col = fill_col, fill_palette = fill_palette, root_name = root_name, dataset_name = dataset_name, collapse = collapse)
   html_data <- kronar_html(xml_data)
 
   writeLines(html_data, file, useBytes = TRUE)
@@ -242,7 +239,8 @@ kronar_write <- function(df, file, count_col = NULL, color_col = NULL, root_name
 #'
 #' @param df A data frame.
 #' @param count_col Name or index of the count column.
-#' @param color_col Name or index of the color column.
+#' @param fill_col Name or index of the fill column.
+#' @param fill_palette Optional custom color palette.
 #' @param root_name Name of the root node.
 #' @param dataset_name Name of the dataset.
 #' @param collapse Logical. If TRUE, initial rendering collapses the hierarchy.
@@ -251,8 +249,8 @@ kronar_write <- function(df, file, count_col = NULL, color_col = NULL, root_name
 #' @return An `htmltools::tag` object representing the iframe.
 #' @importFrom htmltools tags HTML
 #' @export
-kronar_plot <- function(df, count_col = NULL, color_col = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, width = "100%", height = "600px") {
-  xml_data <- kronar_xml(df, count_col = count_col, color_col = color_col, root_name = root_name, dataset_name = dataset_name, collapse = collapse)
+kronar_plot <- function(df, count_col = NULL, fill_col = NULL, fill_palette = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, width = "100%", height = "600px") {
+  xml_data <- kronar_xml(df, count_col = count_col, fill_col = fill_col, fill_palette = fill_palette, root_name = root_name, dataset_name = dataset_name, collapse = collapse)
   html_data <- kronar_html(xml_data)
 
   # Return an iframe containing the html code in srcdoc
@@ -273,7 +271,8 @@ kronar_plot <- function(df, count_col = NULL, color_col = NULL, root_name = "Roo
 #' @param df A data frame.
 #' @param file Path to save the PNG file. If NULL, a temporary file path is generated.
 #' @param count_col Name or index of the count column.
-#' @param color_col Name or index of the color column.
+#' @param fill_col Name or index of the fill column.
+#' @param fill_palette Optional custom color palette.
 #' @param root_name Name of the root node.
 #' @param dataset_name Name of the dataset.
 #' @param collapse Logical. If TRUE, initial rendering collapses the hierarchy.
@@ -281,7 +280,7 @@ kronar_plot <- function(df, count_col = NULL, color_col = NULL, root_name = "Roo
 #' @param ... Additional arguments passed to `webshot2::webshot()`.
 #' @return Path to the generated PNG file.
 #' @export
-kronar_snapshot <- function(df, file = NULL, count_col = NULL, color_col = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, delay = 1.0, ...) {
+kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, fill_palette = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, delay = 1.0, ...) {
   if (is.null(file)) {
     file <- tempfile(fileext = ".png")
   }
@@ -294,7 +293,8 @@ kronar_snapshot <- function(df, file = NULL, count_col = NULL, color_col = NULL,
     df = df,
     file = temp_html,
     count_col = count_col,
-    color_col = color_col,
+    fill_col = fill_col,
+    fill_palette = fill_palette,
     root_name = root_name,
     dataset_name = dataset_name,
     collapse = collapse

@@ -65,31 +65,66 @@ Generate a static PNG screenshot using a headless browser:
 kronar_snapshot(data, file = "my_snapshot.png", count_col = "Count", root_name = "Life Tree")
 ```
 
-### 6. Custom Node Coloring
-You can specify custom hexadecimal colors (e.g. `#FF5733`) for individual nodes by including a color column and passing it to the functions:
+### 6. Custom Node Coloring (`fill_col`)
+The `fill_col` parameter allows you to color the chart wedges in three different modes:
+
+#### Mode 1: Literal Colors (`scale_fill_manual`/`scale_fill_identity` style)
+Provide hex strings or R color names directly in the column:
 
 ```r
-colored_data <- data.frame(
+data_literal <- data.frame(
   Kingdom = c("Bacteria", "Bacteria", "Eukaryota"),
   Phylum  = c("Proteobacteria", "Firmicutes", "Chordata"),
   Count   = c(300, 150, 100),
-  Color   = c("#FF5733", "#33FF57", "#3357FF"), # Custom node colors
+  Color   = c("#FF5733", "blue", "green"), # Hex or standard names
   stringsAsFactors = FALSE
 )
 
-# Render with custom colors (which also propagate to children automatically)
-kronar_plot(colored_data, count_col = "Count", color_col = "Color")
+# Render with literal colors (colors also propagate to children automatically)
+kronar_plot(data_literal, count_col = "Count", fill_col = "Color")
+```
+
+#### Mode 2: Numeric Variables (`scale_fill_continuous` style)
+Provide a numeric column. The package will map values to a continuous color gradient (blue to red by default):
+
+```r
+data_numeric <- data.frame(
+  Kingdom = c("Bacteria", "Bacteria", "Eukaryota"),
+  Phylum  = c("Proteobacteria", "Firmicutes", "Chordata"),
+  Count   = c(300, 150, 100),
+  Value   = c(1.2, 5.8, 9.4), # Continuous scores
+  stringsAsFactors = FALSE
+)
+
+# Render with numeric gradient
+kronar_plot(data_numeric, count_col = "Count", fill_col = "Value")
+```
+
+#### Mode 3: Discrete/Factor Variables (`scale_fill_discrete` style)
+Provide a discrete categories column. The package will automatically map unique categories to a professional discrete color palette (`Set 2` by default):
+
+```r
+data_discrete <- data.frame(
+  Kingdom = c("Bacteria", "Bacteria", "Eukaryota"),
+  Phylum  = c("Proteobacteria", "Firmicutes", "Chordata"),
+  Count   = c(300, 150, 100),
+  Group   = c("Group A", "Group B", "Group A"), # Categories
+  stringsAsFactors = FALSE
+)
+
+# Render with discrete palette colors
+kronar_plot(data_discrete, count_col = "Count", fill_col = "Group")
 ```
 
 ---
 
 ## Functions Reference
 
-* `kronar_xml(df, count_col, color_col, root_name, dataset_name, collapse)`: Converts a hierarchical data frame into Krona-compliant XML.
+* `kronar_xml(df, count_col, fill_col, fill_palette, root_name, dataset_name, collapse)`: Converts a hierarchical data frame into Krona-compliant XML.
 * `kronar_html(xml_data)`: Builds a self-contained HTML page by inlining JS and base64 encoded images.
-* `kronar_write(df, file, count_col, color_col, ...)`: Writes the self-contained HTML chart to a file.
-* `kronar_plot(df, count_col, color_col, ...)`: Returns an `htmltools` tag object (iframe) to render in RStudio Viewer or notebooks.
-* `kronar_snapshot(df, file, count_col, color_col, ...)`: Captures a static PNG snapshot of the chart using `webshot2`.
+* `kronar_write(df, file, count_col, fill_col, fill_palette, ...)`: Writes the self-contained HTML chart to a file.
+* `kronar_plot(df, count_col, fill_col, fill_palette, ...)`: Returns an `htmltools` tag object (iframe) to render in RStudio Viewer or notebooks.
+* `kronar_snapshot(df, file, count_col, fill_col, fill_palette, ...)`: Captures a static PNG snapshot of the chart using `webshot2`.
 
 ## License
 

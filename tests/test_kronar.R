@@ -112,18 +112,38 @@ test_that("kronar_snapshot captures a PNG file", {
   })
 })
 
-test_that("color_col generates custom color attributes in XML", {
-  test_df <- data.frame(
+test_that("fill_col generates correct color attributes in XML across all modes", {
+  # Mode 1: Literal Hex colors
+  df_literal <- data.frame(
     Level1 = c("Bacteria", "Eukaryota"),
-    Level2 = c("Proteobacteria", "Chordata"),
     Counts = c(100, 200),
-    Color = c("#FF5733", "#33FF57"),
+    Color = c("#FF5733", "blue"),
     stringsAsFactors = FALSE
   )
+  xml_literal <- kronar_xml(df_literal, count_col = "Counts", fill_col = "Color")
+  expect_true(grepl('color="#FF5733"', xml_literal, fixed = TRUE))
+  expect_true(grepl('color="#0000FF"', xml_literal, fixed = TRUE)) # "blue" resolved to hex
 
-  xml_str <- kronar_xml(test_df, count_col = "Counts", color_col = "Color")
-  expect_true(grepl('color="#FF5733"', xml_str, fixed = TRUE))
-  expect_true(grepl('color="#33FF57"', xml_str, fixed = TRUE))
+  # Mode 2: Numeric (continuous gradient)
+  df_numeric <- data.frame(
+    Level1 = c("Bacteria", "Eukaryota"),
+    Counts = c(100, 200),
+    Value = c(1.0, 5.0),
+    stringsAsFactors = FALSE
+  )
+  xml_numeric <- kronar_xml(df_numeric, count_col = "Counts", fill_col = "Value")
+  # Verify that colors were generated and mapped
+  expect_true(any(grepl('color="#', xml_numeric, fixed = TRUE)))
+
+  # Mode 3: Discrete/Factor (palette mapping)
+  df_discrete <- data.frame(
+    Level1 = c("Bacteria", "Eukaryota"),
+    Counts = c(100, 200),
+    Group = c("A", "B"),
+    stringsAsFactors = FALSE
+  )
+  xml_discrete <- kronar_xml(df_discrete, count_col = "Counts", fill_col = "Group")
+  expect_true(any(grepl('color="#', xml_discrete, fixed = TRUE)))
 })
 
 cat("\nAll tests completed successfully!\n")
