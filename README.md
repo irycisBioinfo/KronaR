@@ -35,10 +35,10 @@ Create a data frame where taxonomic or hierarchical levels go from left to right
 library(KronaR)
 
 data <- data.frame(
-  Reino  = c("Bacteria", "Bacteria", "Eukaryota", "Eukaryota"),
-  Phylum = c("Proteobacteria", "Firmicutes", "Chordata", "Arthropoda"),
-  Clase  = c("Gammaproteobacteria", "Bacilli", "Mammalia", "Insecta"),
-  Conteo = c(300, 150, 100, 250),
+  Kingdom = c("Bacteria", "Bacteria", "Eukaryota", "Eukaryota"),
+  Phylum  = c("Proteobacteria", "Firmicutes", "Chordata", "Arthropoda"),
+  Class   = c("Gammaproteobacteria", "Bacilli", "Mammalia", "Insecta"),
+  Count   = c(300, 150, 100, 250),
   stringsAsFactors = FALSE
 )
 ```
@@ -48,21 +48,21 @@ Render the chart in RStudio Viewer, Shiny, or a notebook using an interactive if
 
 ```r
 # Returns an htmltools tag ready to be viewed
-kronar_plot(data, count_col = "Conteo", root_name = "Life Tree")
+kronar_plot(data, count_col = "Count", root_name = "Life Tree")
 ```
 
 ### 3. Save as HTML File
 Write the standalone HTML chart to disk:
 
 ```r
-kronar_write(data, file = "my_chart.html", count_col = "Conteo", root_name = "Life Tree")
+kronar_write(data, file = "my_chart.html", count_col = "Count", root_name = "Life Tree")
 ```
 
 ### 5. Take a Static PNG Snapshot
 Generate a static PNG screenshot using a headless browser:
 
 ```r
-kronar_snapshot(data, file = "my_snapshot.png", count_col = "Conteo", root_name = "Life Tree")
+kronar_snapshot(data, file = "my_snapshot.png", count_col = "Count", root_name = "Life Tree")
 ```
 
 ---
