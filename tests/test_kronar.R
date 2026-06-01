@@ -112,4 +112,18 @@ test_that("kronar_snapshot captures a PNG file", {
   })
 })
 
+test_that("color_col generates custom color attributes in XML", {
+  test_df <- data.frame(
+    Level1 = c("Bacteria", "Eukaryota"),
+    Level2 = c("Proteobacteria", "Chordata"),
+    Counts = c(100, 200),
+    Color = c("#FF5733", "#33FF57"),
+    stringsAsFactors = FALSE
+  )
+
+  xml_str <- kronar_xml(test_df, count_col = "Counts", color_col = "Color")
+  expect_true(grepl('color="#FF5733"', xml_str, fixed = TRUE))
+  expect_true(grepl('color="#33FF57"', xml_str, fixed = TRUE))
+})
+
 cat("\nAll tests completed successfully!\n")

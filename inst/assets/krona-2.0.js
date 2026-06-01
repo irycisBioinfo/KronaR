@@ -3239,12 +3239,20 @@ function Node()
 		}
 		else
 		{
-			var rgb = hslToRgb
-			(
-				hueMin,
-				saturation,
-				lightness
-			);
+			var rgb;
+			if (this.customR !== undefined)
+			{
+				rgb = {r: this.customR, g: this.customG, b: this.customB};
+			}
+			else
+			{
+				rgb = hslToRgb
+				(
+					hueMin,
+					saturation,
+					lightness
+				);
+			}
 			
 			this.r.setTarget(rgb.r);
 			this.g.setTarget(rgb.g);
@@ -5053,7 +5061,8 @@ function load()
 					hueStart,
 					hueEnd,
 					valueStart,
-					valueEnd
+					valueEnd,
+					null
 				);
 				break;
 		}
@@ -5148,7 +5157,8 @@ function loadTreeDOM
 	hueStart,
 	hueEnd,
 	valueStart,
-	valueEnd
+	valueEnd,
+	parentColor
 )
 {
 	var newNode = new Node();
@@ -5158,6 +5168,40 @@ function loadTreeDOM
 	if ( domNode.getAttribute('href') )
 	{
 		newNode.href = domNode.getAttribute('href');
+	}
+	
+	var customColor = parentColor;
+	if ( domNode.getAttribute('color') )
+	{
+		var hex = domNode.getAttribute('color');
+		var match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+		if ( match )
+		{
+			customColor = {
+				r: parseInt(match[1], 16),
+				g: parseInt(match[2], 16),
+				b: parseInt(match[3], 16)
+			};
+		}
+		else
+		{
+			match = hex.match(/^#?([a-f\d])([a-f\d])([a-f\d])$/i);
+			if ( match )
+			{
+				customColor = {
+					r: parseInt(match[1] + match[1], 16),
+					g: parseInt(match[2] + match[2], 16),
+					b: parseInt(match[3] + match[3], 16)
+				};
+			}
+		}
+	}
+	
+	if ( customColor )
+	{
+		newNode.customR = customColor.r;
+		newNode.customG = customColor.g;
+		newNode.customB = customColor.b;
 	}
 	
 	if ( hueName )
@@ -5178,7 +5222,8 @@ function loadTreeDOM
 				hueStart,
 				hueEnd,
 				valueStart,
-				valueEnd
+				valueEnd,
+				customColor
 			);
 			newChild.parent = newNode;
 			newNode.children.push(newChild);

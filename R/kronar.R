@@ -4,35 +4,57 @@
 #'
 #' @param df A data frame with hierarchical columns (character or factor) and a numeric count column.
 #' @param count_col Name or index of the column containing counts. If NULL, the first numeric column is used.
+#' @param color_col Name or index of the column containing custom hex/RGB colors (e.g. "#FF5733"). If NULL, colors are dynamically assigned by Krona.
 #' @param root_name Name of the root node. Default is "Root".
 #' @param dataset_name Name of the dataset. Default is "Dataset".
 #' @param collapse Logical. If TRUE (default), initial rendering collapses the hierarchy.
 #' @return A character string containing the Krona XML.
 #' @export
-kronar_xml <- function(df, count_col = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE) {
+kronar_xml <- function(df, count_col = NULL, color_col = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE) {
   # Validate and parse data frame
-  parsed <- validate_and_parse_df(df, count_col)
+  parsed <- validate_and_parse_df(df, count_col, color_col)
   hier <- parsed$hier
   counts <- parsed$counts
 
+  # Extract colors if color_col is provided
+  colors <- NULL
+  if (!is.null(color_col)) {
+    if (is.character(color_col)) {
+      colors <- as.character(df[[color_col]])
+    } else if (is.numeric(color_col)) {
+      colors <- as.character(df[[as.integer(color_col)]])
+    }
+    colors[is.na(colors)] <- ""
+  }
+
   # Node environment constructor helper
-  NodeEnv <- function(name = "Root", value = 0) {
+  NodeEnv <- function(name = "Root", value = 0, color = NULL) {
     env <- new.env(parent = emptyenv())
     env$name <- name
     env$value <- value
+    env$color <- color
     env$children <- list()
     env
   }
 
   # Helper to recursively add path
-  add_path <- function(root_env, path, count) {
+  add_path <- function(root_env, path, count, color = NULL) {
     curr <- root_env
     curr$value <- curr$value + count
 
-    for (step in path) {
+    n <- length(path)
+    for (i in seq_along(path)) {
+      step <- path[i]
       if (!step %in% names(curr$children)) {
-        new_node <- NodeEnv(name = step, value = 0)
+        # Only assign color to the leaf node
+        node_color <- if (i == n && !is.null(color) && color != "") color else NULL
+        new_node <- NodeEnv(name = step, value = 0, color = node_color)
         curr$children[[step]] <- new_node
+      } else {
+        # If node exists and this is the leaf, we can update or set its color
+        if (i == n && !is.null(color) && color != "") {
+          curr$children[[step]]$color <- color
+        }
       }
       curr <- curr$children[[step]]
       curr$value <- curr$value + count
@@ -58,11 +80,15 @@ kronar_xml <- function(df, count_col = NULL, root_name = "Root", dataset_name = 
   for (i in seq_len(nrow(hier))) {
     row_vec <- as.character(hier[i, ])
     path <- extract_path(row_vec)
+    color_val <- if (!is.null(colors)) colors[i] else NULL
     if (length(path) == 0) {
       root_node$value <- root_node$value + counts[i]
+      if (!is.null(color_val) && color_val != "") {
+        root_node$color <- color_val
+      }
       next
     }
-    add_path(root_node, path, counts[i])
+    add_path(root_node, path, counts[i], color_val)
   }
 
   # If root value is still 0 (e.g. all counts were 0 or negative), check counts
@@ -77,7 +103,8 @@ kronar_xml <- function(df, count_col = NULL, root_name = "Root", dataset_name = 
   node_to_xml <- function(node, indent_level = 0) {
     indent_str <- paste0(rep("  ", indent_level), collapse = "")
     escaped_name <- escape_xml(node$name)
-    node_open <- sprintf('%s<node name="%s">', indent_str, escaped_name)
+    color_attr <- if (!is.null(node$color) && node$color != "") sprintf(' color="%s"', escape_xml(node$color)) else ""
+    node_open <- sprintf('%s<node name="%s"%s>', indent_str, escaped_name, color_attr)
     node_val <- sprintf('%s  <magnitude><val>%s</val></magnitude>', indent_str, format(node$value, scientific = FALSE, justify = "none", trim = TRUE))
 
     if (length(node$children) == 0) {
@@ -194,13 +221,14 @@ kronar_html <- function(xml_data) {
 #' @param df A data frame.
 #' @param file Path to the output HTML file.
 #' @param count_col Name or index of the count column.
+#' @param color_col Name or index of the color column.
 #' @param root_name Name of the root node.
 #' @param dataset_name Name of the dataset.
 #' @param collapse Logical. If TRUE, initial rendering collapses the hierarchy.
 #' @return The file path to the written HTML file, invisibly.
 #' @export
-kronar_write <- function(df, file, count_col = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE) {
-  xml_data <- kronar_xml(df, count_col = count_col, root_name = root_name, dataset_name = dataset_name, collapse = collapse)
+kronar_write <- function(df, file, count_col = NULL, color_col = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE) {
+  xml_data <- kronar_xml(df, count_col = count_col, color_col = color_col, root_name = root_name, dataset_name = dataset_name, collapse = collapse)
   html_data <- kronar_html(xml_data)
 
   writeLines(html_data, file, useBytes = TRUE)
@@ -214,6 +242,7 @@ kronar_write <- function(df, file, count_col = NULL, root_name = "Root", dataset
 #'
 #' @param df A data frame.
 #' @param count_col Name or index of the count column.
+#' @param color_col Name or index of the color column.
 #' @param root_name Name of the root node.
 #' @param dataset_name Name of the dataset.
 #' @param collapse Logical. If TRUE, initial rendering collapses the hierarchy.
@@ -222,8 +251,8 @@ kronar_write <- function(df, file, count_col = NULL, root_name = "Root", dataset
 #' @return An `htmltools::tag` object representing the iframe.
 #' @importFrom htmltools tags HTML
 #' @export
-kronar_plot <- function(df, count_col = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, width = "100%", height = "600px") {
-  xml_data <- kronar_xml(df, count_col = count_col, root_name = root_name, dataset_name = dataset_name, collapse = collapse)
+kronar_plot <- function(df, count_col = NULL, color_col = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, width = "100%", height = "600px") {
+  xml_data <- kronar_xml(df, count_col = count_col, color_col = color_col, root_name = root_name, dataset_name = dataset_name, collapse = collapse)
   html_data <- kronar_html(xml_data)
 
   # Return an iframe containing the html code in srcdoc
@@ -244,6 +273,7 @@ kronar_plot <- function(df, count_col = NULL, root_name = "Root", dataset_name =
 #' @param df A data frame.
 #' @param file Path to save the PNG file. If NULL, a temporary file path is generated.
 #' @param count_col Name or index of the count column.
+#' @param color_col Name or index of the color column.
 #' @param root_name Name of the root node.
 #' @param dataset_name Name of the dataset.
 #' @param collapse Logical. If TRUE, initial rendering collapses the hierarchy.
@@ -251,7 +281,7 @@ kronar_plot <- function(df, count_col = NULL, root_name = "Root", dataset_name =
 #' @param ... Additional arguments passed to `webshot2::webshot()`.
 #' @return Path to the generated PNG file.
 #' @export
-kronar_snapshot <- function(df, file = NULL, count_col = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, delay = 1.0, ...) {
+kronar_snapshot <- function(df, file = NULL, count_col = NULL, color_col = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, delay = 1.0, ...) {
   if (is.null(file)) {
     file <- tempfile(fileext = ".png")
   }
@@ -264,6 +294,7 @@ kronar_snapshot <- function(df, file = NULL, count_col = NULL, root_name = "Root
     df = df,
     file = temp_html,
     count_col = count_col,
+    color_col = color_col,
     root_name = root_name,
     dataset_name = dataset_name,
     collapse = collapse

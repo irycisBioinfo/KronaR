@@ -65,15 +65,31 @@ Generate a static PNG screenshot using a headless browser:
 kronar_snapshot(data, file = "my_snapshot.png", count_col = "Count", root_name = "Life Tree")
 ```
 
+### 6. Custom Node Coloring
+You can specify custom hexadecimal colors (e.g. `#FF5733`) for individual nodes by including a color column and passing it to the functions:
+
+```r
+colored_data <- data.frame(
+  Kingdom = c("Bacteria", "Bacteria", "Eukaryota"),
+  Phylum  = c("Proteobacteria", "Firmicutes", "Chordata"),
+  Count   = c(300, 150, 100),
+  Color   = c("#FF5733", "#33FF57", "#3357FF"), # Custom node colors
+  stringsAsFactors = FALSE
+)
+
+# Render with custom colors (which also propagate to children automatically)
+kronar_plot(colored_data, count_col = "Count", color_col = "Color")
+```
+
 ---
 
 ## Functions Reference
 
-* `kronar_xml(df, count_col, root_name, dataset_name, collapse)`: Converts a hierarchical data frame into Krona-compliant XML.
+* `kronar_xml(df, count_col, color_col, root_name, dataset_name, collapse)`: Converts a hierarchical data frame into Krona-compliant XML.
 * `kronar_html(xml_data)`: Builds a self-contained HTML page by inlining JS and base64 encoded images.
-* `kronar_write(df, file, ...)`: Writes the self-contained HTML chart to a file.
-* `kronar_plot(df, ...)`: Returns an `htmltools` tag object (iframe) to render in RStudio Viewer or notebooks.
-* `kronar_snapshot(df, file, ...)`: Captures a static PNG snapshot of the chart using `webshot2`.
+* `kronar_write(df, file, count_col, color_col, ...)`: Writes the self-contained HTML chart to a file.
+* `kronar_plot(df, count_col, color_col, ...)`: Returns an `htmltools` tag object (iframe) to render in RStudio Viewer or notebooks.
+* `kronar_snapshot(df, file, count_col, color_col, ...)`: Captures a static PNG snapshot of the chart using `webshot2`.
 
 ## License
 
