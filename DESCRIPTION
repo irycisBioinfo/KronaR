@@ -1,0 +1,22 @@
+Package: KronaR
+Title: R Wrapper for Krona Interactive Charts
+Version: 0.1.0
+Authors@R: c(
+    person("Valentin", "Shared", role = c("aut", "cre"), email = "valentin@example.com")
+  )
+Description: Generates self-contained, interactive, zoomable hierarchical
+    pie charts using the Krona HTML5 visualization engine. Accepts R data frames
+    and produces HTML widgets (renderable via iframes) or static PNG snapshots.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Imports:
+    htmltools,
+    webshot2
+Suggests:
+    png,
+    grid,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

@@ -1,0 +1,21 @@
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data
+.RData
+.Ruserdata
+
+# User-specific files
+.Rproj.user/
+
+# Build and packaging
+*.tar.gz
+*.Rcheck/
+
+# Temporary and log files
+tests/*.png
+tests/*.html
+/src/*.o
+/src/*.so
+/src/*.dll
