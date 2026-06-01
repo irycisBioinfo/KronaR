@@ -95,6 +95,47 @@ kronar_xml <- function(df, count_col = NULL, fill_col = NULL, fill_palette = NUL
     }
   }
 
+  # Propagate colors up the tree (weighted average of children)
+  if (!is.null(colors)) {
+    propagate_colors <- function(node) {
+      if (length(node$children) == 0) {
+        return(node$color)
+      }
+      
+      child_colors <- sapply(node$children, propagate_colors)
+      child_values <- sapply(node$children, function(c) c$value)
+      
+      # If this node already has a custom color, return it
+      if (!is.null(node$color) && node$color != "") {
+        return(node$color)
+      }
+      
+      # Otherwise, average children's colors
+      valid_idx <- which(child_colors != "" & !is.na(child_colors) & !is.null(child_colors))
+      if (length(valid_idx) > 0) {
+        rgb_list <- lapply(child_colors[valid_idx], grDevices::col2rgb)
+        rgb_matrix <- do.call(cbind, rgb_list)
+        
+        weights <- child_values[valid_idx]
+        total_weight <- sum(weights)
+        if (total_weight > 0) {
+          avg_r <- sum(rgb_matrix[1, ] * weights) / total_weight
+          avg_g <- sum(rgb_matrix[2, ] * weights) / total_weight
+          avg_b <- sum(rgb_matrix[3, ] * weights) / total_weight
+        } else {
+          avg_r <- mean(rgb_matrix[1, ])
+          avg_g <- mean(rgb_matrix[2, ])
+          avg_b <- mean(rgb_matrix[3, ])
+        }
+        avg_color <- grDevices::rgb(avg_r, avg_g, avg_b, maxColorValue = 255)
+        node$color <- avg_color
+        return(avg_color)
+      }
+      return("")
+    }
+    propagate_colors(root_node)
+  }
+
   # Convert tree to XML
   node_to_xml <- function(node, indent_level = 0) {
     indent_str <- paste0(rep("  ", indent_level), collapse = "")

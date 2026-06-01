@@ -95,9 +95,12 @@ validate_and_parse_df <- function(df, count_col = NULL, fill_col = NULL) {
     col_char
   }), stringsAsFactors = FALSE)
 
+  counts_clean <- df[[count_index]]
+  counts_clean[is.na(counts_clean)] <- 0
+
   list(
     hier = hier_df,
-    counts = df[[count_index]]
+    counts = counts_clean
   )
 }
 

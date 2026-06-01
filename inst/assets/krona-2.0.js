@@ -3240,7 +3240,7 @@ function Node()
 		else
 		{
 			var rgb;
-			if (this.customR !== undefined)
+			if (this.customR !== undefined && ! useHue())
 			{
 				rgb = {r: this.customR, g: this.customG, b: this.customB};
 			}

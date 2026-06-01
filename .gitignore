@@ -19,3 +19,10 @@ tests/*.html
 /src/*.o
 /src/*.so
 /src/*.dll
+
+# Test data files
+metadata.tsv
+amr.tsv
+scratch/
+
+
