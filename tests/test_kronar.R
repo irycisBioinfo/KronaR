@@ -146,4 +146,24 @@ test_that("fill_col generates correct color attributes in XML across all modes",
   expect_true(any(grepl('color="#', xml_discrete, fixed = TRUE)))
 })
 
+test_that("proportion coloring for numeric fills works correctly", {
+  df <- data.frame(
+    L1 = c("A", "A", "B"),
+    L2 = c("A1", "A2", "B1"),
+    Count = c(10, 10, 20),
+    Presence = c(1, 0, 1),
+    stringsAsFactors = FALSE
+  )
+  xml_data <- kronar_xml(df, count_col = "Count", fill_col = "Presence")
+  
+  # A1 (Presence=1) maps to max color #D73027
+  # A2 (Presence=0) maps to min color #313695
+  # A (average proportion = 0.5) maps to middle color #FEE090
+  # B (average proportion = 1.0) maps to max color #D73027
+  expect_true(grepl('name="A1" color="#D73027"', xml_data, ignore.case = TRUE))
+  expect_true(grepl('name="A2" color="#313695"', xml_data, ignore.case = TRUE))
+  expect_true(grepl('name="A" color="#FEE090"', xml_data, ignore.case = TRUE))
+  expect_true(grepl('name="B" color="#D73027"', xml_data, ignore.case = TRUE))
+})
+
 cat("\nAll tests completed successfully!\n")

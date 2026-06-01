@@ -17,43 +17,64 @@ kronar_xml <- function(df, count_col = NULL, fill_col = NULL, fill_palette = NUL
   hier <- parsed$hier
   counts <- parsed$counts
 
-  # Resolve colors if fill_col is provided
-  colors <- NULL
+  # Check if we have a numeric fill column (continuous gradient mode)
+  is_numeric_fill <- FALSE
+  fill_vals <- NULL
   if (!is.null(fill_col)) {
+    fill_col_name <- fill_col
+    if (is.numeric(fill_col)) {
+      fill_col_name <- colnames(df)[as.integer(fill_col)]
+    }
+    raw_fill_vals <- df[[fill_col_name]]
+    if (is.numeric(raw_fill_vals)) {
+      is_numeric_fill <- TRUE
+      fill_vals <- raw_fill_vals
+      fill_vals[is.na(fill_vals)] <- 0
+    }
+  }
+
+  # Resolve colors if fill_col is provided and is not numeric (or as fallback)
+  colors <- NULL
+  if (!is.null(fill_col) && !is_numeric_fill) {
     colors <- resolve_fill_colors(df, fill_col, fill_palette)
   }
 
   # Node environment constructor helper
-  NodeEnv <- function(name = "Root", value = 0, color = NULL) {
+  NodeEnv <- function(name = "Root", value = 0, color = NULL, fill_sum = 0) {
     env <- new.env(parent = emptyenv())
     env$name <- name
     env$value <- value
     env$color <- color
+    env$fill_sum <- fill_sum
     env$children <- list()
     env
   }
 
   # Helper to recursively add path
-  add_path <- function(root_env, path, count, color = NULL) {
+  add_path <- function(root_env, path, count, color = NULL, fill_val = NULL) {
     curr <- root_env
     curr$value <- curr$value + count
+    if (!is.null(fill_val)) {
+      curr$fill_sum <- curr$fill_sum + (fill_val * count)
+    }
 
     n <- length(path)
     for (i in seq_along(path)) {
       step <- path[i]
       if (!step %in% names(curr$children)) {
-        # Only assign color to the leaf node
         node_color <- if (i == n && !is.null(color) && color != "") color else NULL
-        new_node <- NodeEnv(name = step, value = 0, color = node_color)
+        new_node <- NodeEnv(name = step, value = 0, color = node_color, fill_sum = 0)
         curr$children[[step]] <- new_node
       } else {
-        # If node exists and this is the leaf, we can update or set its color
         if (i == n && !is.null(color) && color != "") {
           curr$children[[step]]$color <- color
         }
       }
       curr <- curr$children[[step]]
       curr$value <- curr$value + count
+      if (!is.null(fill_val)) {
+        curr$fill_sum <- curr$fill_sum + (fill_val * count)
+      }
     }
   }
 
@@ -71,20 +92,26 @@ kronar_xml <- function(df, count_col = NULL, fill_col = NULL, fill_palette = NUL
   }
 
   # Build tree using environment nodes
-  root_node <- NodeEnv(name = root_name, value = 0)
+  root_node <- NodeEnv(name = root_name, value = 0, fill_sum = 0)
 
   for (i in seq_len(nrow(hier))) {
     row_vec <- as.character(hier[i, ])
     path <- extract_path(row_vec)
+    
     color_val <- if (!is.null(colors)) colors[i] else NULL
+    fill_val <- if (is_numeric_fill) fill_vals[i] else NULL
+    
     if (length(path) == 0) {
       root_node$value <- root_node$value + counts[i]
       if (!is.null(color_val) && color_val != "") {
         root_node$color <- color_val
       }
+      if (!is.null(fill_val)) {
+        root_node$fill_sum <- root_node$fill_sum + (fill_val * counts[i])
+      }
       next
     }
-    add_path(root_node, path, counts[i], color_val)
+    add_path(root_node, path, counts[i], color_val, fill_val)
   }
 
   # If root value is still 0 (e.g. all counts were 0 or negative), check counts
@@ -95,8 +122,59 @@ kronar_xml <- function(df, count_col = NULL, fill_col = NULL, fill_palette = NUL
     }
   }
 
-  # Propagate colors up the tree (weighted average of children)
-  if (!is.null(colors)) {
+  # Handle coloring/propagation based on fill type
+  if (is_numeric_fill) {
+    # Determine min and max of leaf values from the original non-NA data
+    vals_clean <- fill_vals[!is.na(fill_vals)]
+    if (length(vals_clean) == 0) {
+      vals_clean <- 0
+    }
+    min_val <- min(vals_clean)
+    max_val <- max(vals_clean)
+    
+    # Helper to map a single proportion/value to a hex color
+    map_value_to_color <- function(val) {
+      if (is.na(val)) {
+        val <- 0.5
+      }
+      if (max_val == min_val) {
+        if (max_val > 0) {
+          normalized <- if (max_val >= 0 && max_val <= 1) max_val else 0.5
+        } else {
+          normalized <- 0.0
+        }
+      } else {
+        # Clamp val to min/max
+        val_clamped <- max(min_val, min(max_val, val))
+        normalized <- (val_clamped - min_val) / (max_val - min_val)
+      }
+      
+      # Define gradient
+      if (is.null(fill_palette)) {
+        palette_cols <- c("#313695", "#74add1", "#fee090", "#fdae61", "#d73027")
+      } else {
+        palette_cols <- fill_palette
+      }
+      
+      ramp <- grDevices::colorRamp(palette_cols)
+      rgb_matrix <- ramp(normalized)
+      grDevices::rgb(rgb_matrix[1, 1], rgb_matrix[1, 2], rgb_matrix[1, 3], maxColorValue = 255)
+    }
+    
+    # Recursive function to assign colors to all nodes based on proportion
+    assign_node_colors <- function(node) {
+      prop <- if (node$value > 0) node$fill_sum / node$value else 0
+      node$color <- map_value_to_color(prop)
+      
+      for (child in node$children) {
+        assign_node_colors(child)
+      }
+    }
+    
+    assign_node_colors(root_node)
+    
+  } else if (!is.null(colors)) {
+    # Propagate colors up the tree using RGB averaging for discrete/literal categories
     propagate_colors <- function(node) {
       if (length(node$children) == 0) {
         return(node$color)
@@ -105,23 +183,34 @@ kronar_xml <- function(df, count_col = NULL, fill_col = NULL, fill_palette = NUL
       child_colors <- sapply(node$children, propagate_colors)
       child_values <- sapply(node$children, function(c) c$value)
       
-      # If this node already has a custom color, return it
-      if (!is.null(node$color) && node$color != "") {
-        return(node$color)
+      # Determine if there is a leaf contribution at this node
+      sum_child_values <- sum(child_values)
+      leaf_value <- node$value - sum_child_values
+      
+      # Collect colors and weights
+      colors_vec <- character(0)
+      weights_vec <- numeric(0)
+      
+      if (leaf_value > 0 && !is.null(node$color) && node$color != "") {
+        colors_vec <- c(colors_vec, node$color)
+        weights_vec <- c(weights_vec, leaf_value)
       }
       
-      # Otherwise, average children's colors
-      valid_idx <- which(child_colors != "" & !is.na(child_colors) & !is.null(child_colors))
-      if (length(valid_idx) > 0) {
-        rgb_list <- lapply(child_colors[valid_idx], grDevices::col2rgb)
+      valid_child_idx <- which(child_colors != "" & !is.na(child_colors) & !is.null(child_colors))
+      if (length(valid_child_idx) > 0) {
+        colors_vec <- c(colors_vec, child_colors[valid_child_idx])
+        weights_vec <- c(weights_vec, child_values[valid_child_idx])
+      }
+      
+      if (length(colors_vec) > 0) {
+        rgb_list <- lapply(colors_vec, grDevices::col2rgb)
         rgb_matrix <- do.call(cbind, rgb_list)
         
-        weights <- child_values[valid_idx]
-        total_weight <- sum(weights)
+        total_weight <- sum(weights_vec)
         if (total_weight > 0) {
-          avg_r <- sum(rgb_matrix[1, ] * weights) / total_weight
-          avg_g <- sum(rgb_matrix[2, ] * weights) / total_weight
-          avg_b <- sum(rgb_matrix[3, ] * weights) / total_weight
+          avg_r <- sum(rgb_matrix[1, ] * weights_vec) / total_weight
+          avg_g <- sum(rgb_matrix[2, ] * weights_vec) / total_weight
+          avg_b <- sum(rgb_matrix[3, ] * weights_vec) / total_weight
         } else {
           avg_r <- mean(rgb_matrix[1, ])
           avg_g <- mean(rgb_matrix[2, ])
