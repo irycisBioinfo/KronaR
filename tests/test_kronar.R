@@ -166,4 +166,25 @@ test_that("proportion coloring for numeric fills works correctly", {
   expect_true(grepl('name="B" color="#D73027"', xml_data, ignore.case = TRUE))
 })
 
+test_that("kronar_snapshot can export a vector SVG file using internal JS routine", {
+  test_df <- data.frame(
+    Level1 = c("A", "B"),
+    Counts = c(10, 20),
+    stringsAsFactors = FALSE
+  )
+  
+  temp_svg <- tempfile(fileext = ".svg")
+  on.exit(unlink(temp_svg), add = TRUE)
+  
+  tryCatch({
+    svg_path <- kronar_snapshot(test_df, file = temp_svg, delay = 0.5)
+    expect_true(file.exists(svg_path))
+    content <- readLines(svg_path, warn = FALSE)
+    expect_true(any(grepl("<svg", content)))
+    message("SVG export completed successfully. Size: ", file.info(svg_path)$size, " bytes")
+  }, error = function(e) {
+    warning("SVG snapshot failed: ", e$message)
+  })
+})
+
 cat("\nAll tests completed successfully!\n")

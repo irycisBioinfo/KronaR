@@ -6144,10 +6144,41 @@ function snapshot()
 	snapshotMode = false;
 	
 	svg += svgFooter();
-	var dataUri = 'data:image/svg+xml,' + encodeURIComponent(svg)
+	var dataUri = 'data:image/svg+xml,' + encodeURIComponent(svg);
 	var string = '<html><body><iframe src="' + dataUri + '" frameborder="0" style="position:absolute; border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe><a style="position:absolute" href="' + dataUri + '" download="snapshot.svg">Download Snapshot</a></html></body>';
-    var win = window.open();
-    win.document.write(string)
+	
+	try
+	{
+		var win = window.open();
+		if ( win )
+		{
+			win.document.write(string);
+		}
+		else
+		{
+			var blob = new Blob([svg], {type: 'image/svg+xml'});
+			var url = URL.createObjectURL(blob);
+			var a = document.createElement('a');
+			a.href = url;
+			a.download = 'snapshot.svg';
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+		}
+	}
+	catch ( e )
+	{
+		var blob = new Blob([svg], {type: 'image/svg+xml'});
+		var url = URL.createObjectURL(blob);
+		var a = document.createElement('a');
+		a.href = url;
+		a.download = 'snapshot.svg';
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
 }
 
 function save()

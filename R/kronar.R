@@ -393,22 +393,24 @@ kronar_plot <- function(df, count_col = NULL, fill_col = NULL, fill_palette = NU
   )
 }
 
-#' Take a Static PNG Snapshot of a Krona Chart
+#' Take a Static SVG or PNG Snapshot of a Krona Chart
 #'
-#' Generates a Krona chart, renders it in a headless browser via `webshot2`,
-#' and saves a static PNG snapshot.
+#' Generates a Krona chart, renders it in a headless browser, and extracts the
+#' vector SVG chart using Krona's internal snapshot routine. Saves either the SVG
+#' file or converts it to PNG (using `rsvg` if available, or falling back to a
+#' browser screenshot via `webshot2`).
 #'
 #' @param df A data frame.
-#' @param file Path to save the PNG file. If NULL, a temporary file path is generated.
+#' @param file Path to save the output file. If NULL, a temporary file path is generated.
 #' @param count_col Name or index of the count column.
 #' @param fill_col Name or index of the fill column.
 #' @param fill_palette Optional custom color palette.
 #' @param root_name Name of the root node.
 #' @param dataset_name Name of the dataset.
 #' @param collapse Logical. If TRUE, initial rendering collapses the hierarchy.
-#' @param delay Number of seconds to wait for the chart to render before taking the screenshot. Default is 1.0.
-#' @param ... Additional arguments passed to `webshot2::webshot()`.
-#' @return Path to the generated PNG file.
+#' @param delay Number of seconds to wait for the chart to render before taking the snapshot. Default is 1.0.
+#' @param ... Additional arguments passed to `webshot2::webshot()` if standard screenshot fallback is used.
+#' @return Path to the generated snapshot file.
 #' @export
 kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, fill_palette = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, delay = 1.0, ...) {
   if (is.null(file)) {
@@ -430,36 +432,109 @@ kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, 
     collapse = collapse
   )
 
-  # Take the screenshot using webshot2
-  tryCatch({
-    webshot2::webshot(
-      url = temp_html,
-      file = file,
-      delay = delay,
-      ...
-    )
-  }, error = function(e) {
-    msg <- e$message
-    if (grepl("chrome|chromote|headless|executable|path", msg, ignore.case = TRUE)) {
-      stop(
-        "kronar_snapshot failed because Google Chrome / Chromium could not be found or executed.\n",
-        "Please ensure that Google Chrome or Chromium is installed on your system.\n",
-        "Note: On Ubuntu/Debian, Chrome is not in the official repositories; you can install Chromium using:\n",
-        "  sudo apt-get update && sudo apt-get install -y chromium-browser\n\n",
-        "If Chrome/Chromium is installed but not found, you can set the environment variable in R:\n",
-        "  Sys.setenv(CHROMOTE_CHROME = '/path/to/chrome-or-chromium')\n\n",
-        "Original error details:\n", msg,
-        call. = FALSE
-      )
-    } else {
-      stop(
-        "kronar_snapshot failed during screenshot capture. This is typically due to a missing ",
-        "Chromium/Chrome installation or missing system package dependencies (e.g. X11, libnss3, libatk).\n",
-        "Original error details:\n", msg,
-        call. = FALSE
-      )
+  # Internal helper to extract the SVG string using chromote and Krona's JS routine
+  extract_svg_via_chromote <- function(html_path, delay_sec) {
+    if (!requireNamespace("chromote", quietly = TRUE)) {
+      stop("chromote package is required to extract SVG snapshots.", call. = FALSE)
     }
-  })
+
+    b <- tryCatch({
+      chromote::default_chromote_object()$new_session()
+    }, error = function(e) {
+      msg <- e$message
+      if (grepl("chrome|chromote|headless|executable|path", msg, ignore.case = TRUE)) {
+        stop(
+          "kronar_snapshot failed because Google Chrome / Chromium could not be found or executed.\n",
+          "Please ensure that Google Chrome or Chromium is installed on your system.\n",
+          "Note: On Ubuntu/Debian, Chrome is not in the official repositories; you can install Chromium using:\n",
+          "  sudo apt-get update && sudo apt-get install -y chromium-browser\n\n",
+          "If Chrome/Chromium is installed but not found, you can set the environment variable in R:\n",
+          "  Sys.setenv(CHROMOTE_CHROME = '/path/to/chrome-or-chromium')\n\n",
+          "Original error details:\n", msg,
+          call. = FALSE
+        )
+      } else {
+        stop(
+          "kronar_snapshot failed to start headless browser. This is typically due to missing X11 or OS graphics libraries.\n",
+          "Original error details:\n", msg,
+          call. = FALSE
+        )
+      }
+    })
+
+    # Close session when leaving function
+    on.exit({
+      b$close()
+    }, add = TRUE)
+
+    url_path <- paste0("file://", normalizePath(html_path, winslash = "/"))
+    b$Page$navigate(url_path)
+
+    # Wait for the chart render and any tweens/animations
+    Sys.sleep(delay_sec)
+
+    # Execute internal JS snapshot() function and retrieve global SVG XML string
+    res <- b$Runtime$evaluate(expression = "snapshot(); svg;")
+
+    if (!is.null(res$result$subtype) && res$result$subtype == "error") {
+      stop("JavaScript error inside Krona snapshot(): ", res$result$description, call. = FALSE)
+    }
+
+    svg_content <- res$result$value
+    if (is.null(svg_content) || svg_content == "") {
+      stop("Krona internal snapshot routine returned empty SVG content.", call. = FALSE)
+    }
+
+    svg_content
+  }
+
+  ext <- tools::file_ext(file)
+  is_svg <- tolower(ext) == "svg"
+
+  if (is_svg) {
+    svg_content <- extract_svg_via_chromote(temp_html, delay)
+    writeLines(svg_content, file, useBytes = TRUE)
+  } else {
+    # Check if rsvg is available for high-quality vector conversion
+    if (requireNamespace("rsvg", quietly = TRUE)) {
+      svg_content <- extract_svg_via_chromote(temp_html, delay)
+      temp_svg <- tempfile(fileext = ".svg")
+      writeLines(svg_content, temp_svg, useBytes = TRUE)
+      on.exit(unlink(temp_svg), add = TRUE)
+      rsvg::rsvg_png(temp_svg, file)
+    } else {
+      # Fall back to standard webshot2 screenshot
+      tryCatch({
+        webshot2::webshot(
+          url = temp_html,
+          file = file,
+          delay = delay,
+          ...
+        )
+      }, error = function(e) {
+        msg <- e$message
+        if (grepl("chrome|chromote|headless|executable|path", msg, ignore.case = TRUE)) {
+          stop(
+            "kronar_snapshot failed because Google Chrome / Chromium could not be found or executed.\n",
+            "Please ensure that Google Chrome or Chromium is installed on your system.\n",
+            "Note: On Ubuntu/Debian, Chrome is not in the official repositories; you can install Chromium using:\n",
+            "  sudo apt-get update && sudo apt-get install -y chromium-browser\n\n",
+            "If Chrome/Chromium is installed but not found, you can set the environment variable in R:\n",
+            "  Sys.setenv(CHROMOTE_CHROME = '/path/to/chrome-or-chromium')\n\n",
+            "Original error details:\n", msg,
+            call. = FALSE
+          )
+        } else {
+          stop(
+            "kronar_snapshot failed during screenshot capture. This is typically due to a missing ",
+            "Chromium/Chrome installation or missing system package dependencies (e.g. X11, libnss3, libatk).\n",
+            "Original error details:\n", msg,
+            call. = FALSE
+          )
+        }
+      })
+    }
+  }
 
   file
 }
