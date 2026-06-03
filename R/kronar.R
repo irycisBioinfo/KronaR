@@ -444,8 +444,10 @@ kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, 
       stop(
         "kronar_snapshot failed because Google Chrome / Chromium could not be found or executed.\n",
         "Please ensure that Google Chrome or Chromium is installed on your system.\n",
-        "If Chrome is installed but not found, you can set the environment variable:\n",
-        "  Sys.setenv(CHROMOTE_CHROME = '/path/to/chrome')\n\n",
+        "Note: On Ubuntu/Debian, Chrome is not in the official repositories; you can install Chromium using:\n",
+        "  sudo apt-get update && sudo apt-get install -y chromium-browser\n\n",
+        "If Chrome/Chromium is installed but not found, you can set the environment variable in R:\n",
+        "  Sys.setenv(CHROMOTE_CHROME = '/path/to/chrome-or-chromium')\n\n",
         "Original error details:\n", msg,
         call. = FALSE
       )
