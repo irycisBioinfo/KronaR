@@ -2,6 +2,19 @@
 #'
 #' Converts a hierarchical data frame into Krona-compatible XML.
 #'
+#' @details
+#' The input \code{df} must be a data frame containing:
+#' \itemize{
+#'   \item \strong{Hierarchical Columns:} One or more character or factor columns representing the hierarchy (e.g., taxonomic ranks like Kingdom, Phylum, Class, Order, Family, Genus, Species, and leaf node identifiers like Genome ID). These columns should be ordered from highest rank (leftmost) to lowest rank (rightmost). Any empty string (\code{""}) or \code{NA} value at an intermediate level is treated as unclassified and will truncate the hierarchy path for that row.
+#'   \item \strong{Count Column:} A numeric column specifying the abundance, magnitude, or weight for each row. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value in this column is treated as \code{0}.
+#'   \item \strong{Fill Column (Optional):} A column containing values used to determine colors. This column is excluded from the hierarchical structure and is specified via the \code{fill_col} parameter. It can contain:
+#'     \itemize{
+#'       \item Numeric values (for continuous color scale mapping and node proportion recalculation).
+#'       \item Character/factor categories (for discrete color palettes).
+#'       \item Valid color names or hexadecimal colors (for literal color mapping).
+#'     }
+#' }
+#'
 #' @param df A data frame with hierarchical columns (character or factor) and a numeric count column.
 #' @param count_col Name or index of the column containing counts. If NULL, the first numeric column is used.
 #' @param fill_col Name or index of the column containing fill values (colors, numeric gradients, or discrete categories). If NULL, colors are dynamically assigned by Krona.
@@ -344,6 +357,19 @@ kronar_html <- function(xml_data) {
 #'
 #' Generates the self-contained HTML chart and writes it to a file.
 #'
+#' @details
+#' The input \code{df} must be a data frame containing:
+#' \itemize{
+#'   \item \strong{Hierarchical Columns:} One or more character or factor columns representing the hierarchy (e.g., taxonomic ranks like Kingdom, Phylum, Class, Order, Family, Genus, Species, and leaf node identifiers like Genome ID). These columns should be ordered from highest rank (leftmost) to lowest rank (rightmost). Any empty string (\code{""}) or \code{NA} value at an intermediate level is treated as unclassified and will truncate the hierarchy path for that row.
+#'   \item \strong{Count Column:} A numeric column specifying the abundance, magnitude, or weight for each row. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value in this column is treated as \code{0}.
+#'   \item \strong{Fill Column (Optional):} A column containing values used to determine colors. This column is excluded from the hierarchical structure and is specified via the \code{fill_col} parameter. It can contain:
+#'     \itemize{
+#'       \item Numeric values (for continuous color scale mapping and node proportion recalculation).
+#'       \item Character/factor categories (for discrete color palettes).
+#'       \item Valid color names or hexadecimal colors (for literal color mapping).
+#'     }
+#' }
+#'
 #' @param df A data frame.
 #' @param file Path to the output HTML file.
 #' @param count_col Name or index of the count column.
@@ -366,6 +392,19 @@ kronar_write <- function(df, file, count_col = NULL, fill_col = NULL, fill_palet
 #'
 #' Returns an HTML iframe tag object enclosing the Krona chart using htmltools.
 #' This allows the chart to render inside RStudio Viewer, Shiny apps, and Quarto/RMarkdown notebooks.
+#'
+#' @details
+#' The input \code{df} must be a data frame containing:
+#' \itemize{
+#'   \item \strong{Hierarchical Columns:} One or more character or factor columns representing the hierarchy (e.g., taxonomic ranks like Kingdom, Phylum, Class, Order, Family, Genus, Species, and leaf node identifiers like Genome ID). These columns should be ordered from highest rank (leftmost) to lowest rank (rightmost). Any empty string (\code{""}) or \code{NA} value at an intermediate level is treated as unclassified and will truncate the hierarchy path for that row.
+#'   \item \strong{Count Column:} A numeric column specifying the abundance, magnitude, or weight for each row. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value in this column is treated as \code{0}.
+#'   \item \strong{Fill Column (Optional):} A column containing values used to determine colors. This column is excluded from the hierarchical structure and is specified via the \code{fill_col} parameter. It can contain:
+#'     \itemize{
+#'       \item Numeric values (for continuous color scale mapping and node proportion recalculation).
+#'       \item Character/factor categories (for discrete color palettes).
+#'       \item Valid color names or hexadecimal colors (for literal color mapping).
+#'     }
+#' }
 #'
 #' @param df A data frame.
 #' @param count_col Name or index of the count column.
@@ -399,6 +438,19 @@ kronar_plot <- function(df, count_col = NULL, fill_col = NULL, fill_palette = NU
 #' vector SVG chart using Krona's internal snapshot routine. Saves either the SVG
 #' file or converts it to PNG (using `rsvg` if available, or falling back to a
 #' browser screenshot via `webshot2`).
+#'
+#' @details
+#' The input \code{df} must be a data frame containing:
+#' \itemize{
+#'   \item \strong{Hierarchical Columns:} One or more character or factor columns representing the hierarchy (e.g., taxonomic ranks like Kingdom, Phylum, Class, Order, Family, Genus, Species, and leaf node identifiers like Genome ID). These columns should be ordered from highest rank (leftmost) to lowest rank (rightmost). Any empty string (\code{""}) or \code{NA} value at an intermediate level is treated as unclassified and will truncate the hierarchy path for that row.
+#'   \item \strong{Count Column:} A numeric column specifying the abundance, magnitude, or weight for each row. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value in this column is treated as \code{0}.
+#'   \item \strong{Fill Column (Optional):} A column containing values used to determine colors. This column is excluded from the hierarchical structure and is specified via the \code{fill_col} parameter. It can contain:
+#'     \itemize{
+#'       \item Numeric values (for continuous color scale mapping and node proportion recalculation).
+#'       \item Character/factor categories (for discrete color palettes).
+#'       \item Valid color names or hexadecimal colors (for literal color mapping).
+#'     }
+#' }
 #'
 #' @param df A data frame.
 #' @param file Path to save the output file. If NULL, a temporary file path is generated.

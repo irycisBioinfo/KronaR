@@ -2,7 +2,7 @@
 % Please edit documentation in R/kronar.R
 \name{kronar_snapshot}
 \alias{kronar_snapshot}
-\title{Take a Static PNG Snapshot of a Krona Chart}
+\title{Take a Static SVG or PNG Snapshot of a Krona Chart}
 \usage{
 kronar_snapshot(
   df,
@@ -20,7 +20,7 @@ kronar_snapshot(
 \arguments{
 \item{df}{A data frame.}
 
-\item{file}{Path to save the PNG file. If NULL, a temporary file path is generated.}
+\item{file}{Path to save the output file. If NULL, a temporary file path is generated.}
 
 \item{count_col}{Name or index of the count column.}
 
@@ -34,14 +34,29 @@ kronar_snapshot(
 
 \item{collapse}{Logical. If TRUE, initial rendering collapses the hierarchy.}
 
-\item{delay}{Number of seconds to wait for the chart to render before taking the screenshot. Default is 1.0.}
+\item{delay}{Number of seconds to wait for the chart to render before taking the snapshot. Default is 1.0.}
 
-\item{...}{Additional arguments passed to \code{webshot2::webshot()}.}
+\item{...}{Additional arguments passed to \code{webshot2::webshot()} if standard screenshot fallback is used.}
 }
 \value{
-Path to the generated PNG file.
+Path to the generated snapshot file.
 }
 \description{
-Generates a Krona chart, renders it in a headless browser via \code{webshot2},
-and saves a static PNG snapshot.
+Generates a Krona chart, renders it in a headless browser, and extracts the
+vector SVG chart using Krona's internal snapshot routine. Saves either the SVG
+file or converts it to PNG (using \code{rsvg} if available, or falling back to a
+browser screenshot via \code{webshot2}).
+}
+\details{
+The input \code{df} must be a data frame containing:
+\itemize{
+\item \strong{Hierarchical Columns:} One or more character or factor columns representing the hierarchy (e.g., taxonomic ranks like Kingdom, Phylum, Class, Order, Family, Genus, Species, and leaf node identifiers like Genome ID). These columns should be ordered from highest rank (leftmost) to lowest rank (rightmost). Any empty string (\code{""}) or \code{NA} value at an intermediate level is treated as unclassified and will truncate the hierarchy path for that row.
+\item \strong{Count Column:} A numeric column specifying the abundance, magnitude, or weight for each row. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value in this column is treated as \code{0}.
+\item \strong{Fill Column (Optional):} A column containing values used to determine colors. This column is excluded from the hierarchical structure and is specified via the \code{fill_col} parameter. It can contain:
+\itemize{
+\item Numeric values (for continuous color scale mapping and node proportion recalculation).
+\item Character/factor categories (for discrete color palettes).
+\item Valid color names or hexadecimal colors (for literal color mapping).
+}
+}
 }
