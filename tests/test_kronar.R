@@ -30,6 +30,64 @@ test_that("validate_and_parse_df works as expected", {
   expect_error(validate_and_parse_df(df1, count_col = 5), "out of bounds")
 })
 
+test_that("hier_cols parameter works as expected in validate_and_parse_df", {
+  df <- data.frame(
+    Level1 = c("Eukaryota", "Bacteria"),
+    Level2 = c("Chordata", "Proteobacteria"),
+    Level3 = c("Homo", "Escherichia"),
+    Counts = c(100, 200),
+    Fill = c(1, 2),
+    stringsAsFactors = FALSE
+  )
+
+  # Explicit column selection by name
+  res <- validate_and_parse_df(df, count_col = "Counts", fill_col = "Fill", hier_cols = c("Level1", "Level2"))
+  expect_equal(colnames(res$hier), c("Level1", "Level2"))
+  expect_equal(res$hier$Level1, c("Eukaryota", "Bacteria"))
+
+  # Explicit column selection by index
+  res2 <- validate_and_parse_df(df, count_col = 4, fill_col = 5, hier_cols = c(1, 3))
+  expect_equal(colnames(res2$hier), c("Level1", "Level3"))
+
+  # Out of bounds index
+  expect_error(validate_and_parse_df(df, hier_cols = 10), "out of bounds")
+
+  # Missing column name
+  expect_error(validate_and_parse_df(df, hier_cols = "NonExistent"), "Hierarchical columns not found")
+
+  # Overlap with count column
+  expect_error(validate_and_parse_df(df, count_col = "Counts", hier_cols = "Counts"), "cannot include the count column")
+
+  # Overlap with fill column
+  expect_error(validate_and_parse_df(df, fill_col = "Fill", hier_cols = "Fill"), "cannot include the fill column")
+
+  # Custom ordering is respected
+  res3 <- validate_and_parse_df(df, count_col = "Counts", hier_cols = c("Level3", "Level1"))
+  expect_equal(colnames(res3$hier), c("Level3", "Level1"))
+  expect_equal(res3$hier$Level3, c("Homo", "Escherichia"))
+})
+
+test_that("hier_cols restricts and orders XML output correctly", {
+  test_df <- data.frame(
+    Level1 = c("Eukaryota", "Bacteria"),
+    Level2 = c("Chordata", "Proteobacteria"),
+    Level3 = c("Homo", "Escherichia"),
+    Counts = c(100, 200),
+    stringsAsFactors = FALSE
+  )
+
+  # Only use Level3 and Level1 in that order
+  xml_str <- kronar_xml(test_df, count_col = "Counts", hier_cols = c("Level3", "Level1"))
+
+  # Level2 should NOT be in the XML structure
+  expect_false(grepl("Chordata", xml_str, fixed = TRUE))
+  expect_false(grepl("Proteobacteria", xml_str, fixed = TRUE))
+
+  # Level3 and Level1 should be in the XML structure
+  expect_true(grepl('<node name="Homo">', xml_str, fixed = TRUE))
+  expect_true(grepl('<node name="Eukaryota">', xml_str, fixed = TRUE))
+})
+
 test_that("kronar_xml generates correct XML structure", {
   test_df <- data.frame(
     Level1 = c("Eukaryota", "Eukaryota", "Bacteria"),

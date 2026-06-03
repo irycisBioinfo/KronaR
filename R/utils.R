@@ -20,9 +20,10 @@ escape_xml <- function(x) {
 #' @param df A data frame.
 #' @param count_col Name or index of the column containing counts.
 #' @param fill_col Name or index of the column containing fill values/colors.
+#' @param hier_cols Optional character vector of column names or numeric vector of column indices representing the hierarchical structure. If NULL, all columns except count_col and fill_col are used.
 #' @return A list containing `hier` (a data frame of character columns) and `counts` (a numeric vector).
 #' @keywords internal
-validate_and_parse_df <- function(df, count_col = NULL, fill_col = NULL) {
+validate_and_parse_df <- function(df, count_col = NULL, fill_col = NULL, hier_cols = NULL) {
   if (!is.data.frame(df)) {
     stop("Input must be a data frame.")
   }
@@ -78,14 +79,43 @@ validate_and_parse_df <- function(df, count_col = NULL, fill_col = NULL) {
     }
   }
 
-  # Hierarchical columns are all columns except the count column and fill column
-  exclude_indices <- count_index
-  if (!is.null(fill_index)) {
-    exclude_indices <- unique(c(exclude_indices, fill_index))
+  # Identify hierarchical columns
+  if (is.null(hier_cols)) {
+    # Default behavior: all columns except count and fill
+    exclude_indices <- count_index
+    if (!is.null(fill_index)) {
+      exclude_indices <- unique(c(exclude_indices, fill_index))
+    }
+    hier_indices <- setdiff(seq_len(ncol(df)), exclude_indices)
+  } else {
+    # Explicitly select hierarchical columns
+    if (is.character(hier_cols)) {
+      missing_cols <- setdiff(hier_cols, colnames(df))
+      if (length(missing_cols) > 0) {
+        stop(sprintf("Hierarchical columns not found in data frame: %s", paste(missing_cols, collapse = ", ")))
+      }
+      hier_indices <- match(hier_cols, colnames(df))
+    } else if (is.numeric(hier_cols)) {
+      hier_cols <- as.integer(hier_cols)
+      if (any(hier_cols < 1 | hier_cols > ncol(df))) {
+        stop("Some hierarchical column indices are out of bounds.")
+      }
+      hier_indices <- hier_cols
+    } else {
+      stop("hier_cols must be a character vector of column names, a numeric vector of indices, or NULL.")
+    }
+
+    # Ensure hierarchical columns do not overlap with count or fill columns
+    if (count_index %in% hier_indices) {
+      stop("Hierarchical columns cannot include the count column.")
+    }
+    if (!is.null(fill_index) && fill_index %in% hier_indices) {
+      stop("Hierarchical columns cannot include the fill column.")
+    }
   }
-  hier_indices <- setdiff(seq_len(ncol(df)), exclude_indices)
+
   if (length(hier_indices) == 0) {
-    stop("Data frame must have at least one hierarchical (non-numeric) column.")
+    stop("Data frame must have at least one hierarchical column.")
   }
 
   # Clean the hierarchical columns: convert to character, fill NAs/Nulls with empty string

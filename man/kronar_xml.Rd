@@ -8,6 +8,7 @@ kronar_xml(
   df,
   count_col = NULL,
   fill_col = NULL,
+  hier_cols = NULL,
   fill_palette = NULL,
   root_name = "Root",
   dataset_name = "Dataset",
@@ -15,11 +16,13 @@ kronar_xml(
 )
 }
 \arguments{
-\item{df}{A data frame with hierarchical columns (character or factor) and a numeric count column.}
+\item{df}{A data frame.}
 
 \item{count_col}{Name or index of the column containing counts. If NULL, the first numeric column is used.}
 
 \item{fill_col}{Name or index of the column containing fill values (colors, numeric gradients, or discrete categories). If NULL, colors are dynamically assigned by Krona.}
+
+\item{hier_cols}{Optional character vector of column names or numeric vector of column indices representing the hierarchical structure. If NULL, all columns except count_col and fill_col are used.}
 
 \item{fill_palette}{Optional custom color palette. For numeric columns, a vector of colors defining a gradient. For discrete columns, a vector of colors or name of a palette.}
 

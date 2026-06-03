@@ -4,7 +4,7 @@
 \alias{validate_and_parse_df}
 \title{Validate and parse the input data frame for KronaR}
 \usage{
-validate_and_parse_df(df, count_col = NULL, fill_col = NULL)
+validate_and_parse_df(df, count_col = NULL, fill_col = NULL, hier_cols = NULL)
 }
 \arguments{
 \item{df}{A data frame.}
@@ -12,6 +12,8 @@ validate_and_parse_df(df, count_col = NULL, fill_col = NULL)
 \item{count_col}{Name or index of the column containing counts.}
 
 \item{fill_col}{Name or index of the column containing fill values/colors.}
+
+\item{hier_cols}{Optional character vector of column names or numeric vector of column indices representing the hierarchical structure. If NULL, all columns except count_col and fill_col are used.}
 }
 \value{
 A list containing \code{hier} (a data frame of character columns) and \code{counts} (a numeric vector).

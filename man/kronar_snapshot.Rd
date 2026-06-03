@@ -9,6 +9,7 @@ kronar_snapshot(
   file = NULL,
   count_col = NULL,
   fill_col = NULL,
+  hier_cols = NULL,
   fill_palette = NULL,
   root_name = "Root",
   dataset_name = "Dataset",
@@ -25,6 +26,8 @@ kronar_snapshot(
 \item{count_col}{Name or index of the count column.}
 
 \item{fill_col}{Name or index of the fill column.}
+
+\item{hier_cols}{Optional character vector of column names or numeric vector of column indices representing the hierarchical structure. If NULL, all columns except count_col and fill_col are used.}
 
 \item{fill_palette}{Optional custom color palette.}
 
