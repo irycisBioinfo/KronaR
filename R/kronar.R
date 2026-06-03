@@ -431,12 +431,33 @@ kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, 
   )
 
   # Take the screenshot using webshot2
-  webshot2::webshot(
-    url = temp_html,
-    file = file,
-    delay = delay,
-    ...
-  )
+  tryCatch({
+    webshot2::webshot(
+      url = temp_html,
+      file = file,
+      delay = delay,
+      ...
+    )
+  }, error = function(e) {
+    msg <- e$message
+    if (grepl("chrome|chromote|headless|executable|path", msg, ignore.case = TRUE)) {
+      stop(
+        "kronar_snapshot failed because Google Chrome / Chromium could not be found or executed.\n",
+        "Please ensure that Google Chrome or Chromium is installed on your system.\n",
+        "If Chrome is installed but not found, you can set the environment variable:\n",
+        "  Sys.setenv(CHROMOTE_CHROME = '/path/to/chrome')\n\n",
+        "Original error details:\n", msg,
+        call. = FALSE
+      )
+    } else {
+      stop(
+        "kronar_snapshot failed during screenshot capture. This is typically due to a missing ",
+        "Chromium/Chrome installation or missing system package dependencies (e.g. X11, libnss3, libatk).\n",
+        "Original error details:\n", msg,
+        call. = FALSE
+      )
+    }
+  })
 
   file
 }
