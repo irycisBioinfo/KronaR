@@ -413,8 +413,11 @@ kronar_plot <- function(df, count_col = NULL, fill_col = NULL, fill_palette = NU
 #' @return Path to the generated snapshot file.
 #' @export
 kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, fill_palette = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, delay = 1.0, ...) {
+  is_temp_file <- FALSE
   if (is.null(file)) {
     file <- tempfile(fileext = ".png")
+    is_temp_file <- TRUE
+    on.exit(unlink(file), add = TRUE)
   }
 
   # Create a temporary HTML file for the chart
@@ -536,5 +539,25 @@ kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, 
     }
   }
 
+  # Read the generated snapshot into memory and return a ggplot object
+  if (requireNamespace("magick", quietly = TRUE) && requireNamespace("ggplot2", quietly = TRUE)) {
+    img <- tryCatch({
+      if (is_svg && requireNamespace("rsvg", quietly = TRUE)) {
+        magick::image_read_svg(file)
+      } else {
+        magick::image_read(file)
+      }
+    }, error = function(e) {
+      NULL
+    })
+
+    if (!is.null(img)) {
+      p <- magick::image_ggplot(img)
+      return(p)
+    }
+  }
+
+  # Fallback if magick or ggplot2 is not installed
+  warning("magick and/or ggplot2 packages are not installed. Returning file path instead of ggplot object.", call. = FALSE)
   file
 }

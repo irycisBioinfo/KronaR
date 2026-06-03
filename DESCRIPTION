@@ -13,7 +13,9 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 Imports:
     htmltools,
-    webshot2
+    webshot2,
+    ggplot2,
+    magick
 Suggests:
     png,
     grid,

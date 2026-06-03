@@ -101,10 +101,11 @@ test_that("kronar_snapshot captures a PNG file", {
 
   # Try to capture snapshot
   tryCatch({
-    png_path <- kronar_snapshot(test_df, file = temp_png, delay = 0.5)
-    expect_true(file.exists(png_path))
-    expect_gt(file.info(png_path)$size, 0)
-    message("Snapshot completed successfully. PNG size: ", file.info(png_path)$size, " bytes")
+    res_obj <- kronar_snapshot(test_df, file = temp_png, delay = 0.5)
+    expect_true(inherits(res_obj, "ggplot"))
+    expect_true(file.exists(temp_png))
+    expect_gt(file.info(temp_png)$size, 0)
+    message("Snapshot completed successfully. PNG size: ", file.info(temp_png)$size, " bytes")
   }, error = function(e) {
     # If Chrome is not available on this headless system, webshot2 might fail.
     # We catch it gracefully and print warning, but check that it behaves appropriately.
@@ -177,11 +178,12 @@ test_that("kronar_snapshot can export a vector SVG file using internal JS routin
   on.exit(unlink(temp_svg), add = TRUE)
   
   tryCatch({
-    svg_path <- kronar_snapshot(test_df, file = temp_svg, delay = 0.5)
-    expect_true(file.exists(svg_path))
-    content <- readLines(svg_path, warn = FALSE)
+    res_obj <- kronar_snapshot(test_df, file = temp_svg, delay = 0.5)
+    expect_true(inherits(res_obj, "ggplot"))
+    expect_true(file.exists(temp_svg))
+    content <- readLines(temp_svg, warn = FALSE)
     expect_true(any(grepl("<svg", content)))
-    message("SVG export completed successfully. Size: ", file.info(svg_path)$size, " bytes")
+    message("SVG export completed successfully. Size: ", file.info(temp_svg)$size, " bytes")
   }, error = function(e) {
     warning("SVG snapshot failed: ", e$message)
   })
