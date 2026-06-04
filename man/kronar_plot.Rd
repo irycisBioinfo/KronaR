@@ -61,20 +61,35 @@ The input \code{df} must be a data frame containing:
 \examples{
 # Create a sample hierarchical data frame
 df <- data.frame(
-  L1 = c("Bacteria", "Bacteria", "Eukaryota"),
-  L2 = c("Firmicutes", "Proteobacteria", "Chordata"),
-  Count = c(10, 20, 30),
-  Group = c("Pathogen", "NonPathogen", "NonPathogen"),
+  L1 = c("Bacteria", "Bacteria", "Bacteria", "Eukaryota", "Eukaryota"),
+  L2 = c("Proteobacteria", "Firmicutes", "Bacteroidetes", "Chordata", "Arthropoda"),
+  Count = c(150, 80, 120, 200, 90),
+  Group = c("Pathogen", "NonPathogen", "Pathogen", "NonPathogen", "NonPathogen"),
+  Value = c(1.2, 4.5, 2.1, 8.4, 6.0),
   stringsAsFactors = FALSE
 )
 
-# Plot in R Viewer / Notebooks with custom categorical colors
+# Example 1: Plot with custom categorical (discrete) colors
 if (interactive()) {
   kronar_plot(
     df,
     count_col = "Count",
     fill_col = "Group",
-    fill_palette = c("Pathogen" = "red", "NonPathogen" = "green"),
+    fill_palette = c("Pathogen" = "#FF4136", "NonPathogen" = "#2ECC40"),
+    root_name = "Life Forms"
+  )
+}
+
+# Example 2: Plot with a continuous gradient using the Viridis palette
+if (interactive()) {
+  # Generate a Viridis color ramp using grDevices
+  viridis_colors <- grDevices::hcl.colors(100, palette = "Viridis")
+  
+  kronar_plot(
+    df,
+    count_col = "Count",
+    fill_col = "Value",
+    fill_palette = viridis_colors,
     root_name = "Life Forms"
   )
 }

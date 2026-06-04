@@ -285,4 +285,29 @@ test_that("categorical coloring works correctly with discrete categories and cus
   expect_true(grepl('color="#00FF00"', xml_custom, fixed = TRUE))
 })
 
+test_that("continuous coloring works with a Viridis palette", {
+  df <- data.frame(
+    L1 = c("Bacteria", "Bacteria", "Eukaryota"),
+    L2 = c("Proteobacteria", "Firmicutes", "Chordata"),
+    Abundance = c(10, 20, 30),
+    Value = c(1.0, 2.5, 5.0),
+    stringsAsFactors = FALSE
+  )
+
+  # Generate Viridis colors using grDevices::hcl.colors
+  viridis_palette <- grDevices::hcl.colors(5, palette = "Viridis")
+
+  xml_viridis <- kronar_xml(
+    df,
+    count_col = "Abundance",
+    fill_col = "Value",
+    fill_palette = viridis_palette
+  )
+
+  # Min value (1.0) maps to the first color "#4B0055"
+  # Max value (5.0) maps to the last color "#FDE333"
+  expect_true(grepl('color="#4B0055"', xml_viridis, ignore.case = TRUE))
+  expect_true(grepl('color="#FDE333"', xml_viridis, ignore.case = TRUE))
+})
+
 cat("\nAll tests completed successfully!\n")
