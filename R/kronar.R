@@ -668,8 +668,68 @@ kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, 
   # Read the generated snapshot into memory and return a ggplot object
   if (requireNamespace("magick", quietly = TRUE) && requireNamespace("ggplot2", quietly = TRUE)) {
     img <- tryCatch({
-      if (is_svg && requireNamespace("rsvg", quietly = TRUE)) {
-        magick::image_read_svg(file)
+      if (is_svg) {
+        if (requireNamespace("rsvg", quietly = TRUE)) {
+          magick::image_read_svg(file)
+        } else {
+          # ImageMagick fallback for SVG without librsvg has poor quality and prints warnings.
+          # We avoid this by rendering a high-quality temporary PNG via webshot2,
+          # reading it, and deleting it.
+          temp_png <- tempfile(fileext = ".png")
+          on.exit(unlink(temp_png), add = TRUE)
+
+          # Parse base dimensions from viewBox
+          m <- regexec('viewBox="0 0 ([0-9.]+) ([0-9.]+)"', svg_content)
+          if (m[[1]][1] != -1) {
+            matches <- regmatches(svg_content, m)[[1]]
+            base_width <- as.numeric(matches[2])
+            base_height <- as.numeric(matches[3])
+          } else {
+            base_width <- 1002
+            base_height <- 708
+          }
+          if (is.na(base_width) || is.na(base_height) || base_width <= 0 || base_height <= 0) {
+            base_width <- 1002
+            base_height <- 708
+          }
+
+          scale_factor <- dpi / 72
+
+          temp_clean_html <- tempfile(fileext = ".html")
+          on.exit(unlink(temp_clean_html), add = TRUE)
+
+          svg_clean <- gsub("^<\\?xml[^>]*\\?>\\s*", "", svg_content)
+          svg_clean <- gsub("^<!DOCTYPE[^>]*>\\s*", "", svg_clean)
+
+          html_wrapper <- paste(
+            "<!DOCTYPE html>",
+            "<html>",
+            "<head>",
+            "<style>",
+            "  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: transparent; }",
+            "  svg { width: 100%; height: 100%; }",
+            "</style>",
+            "</head>",
+            "<body>",
+            svg_clean,
+            "</body>",
+            "</html>",
+            sep = "\n"
+          )
+          writeLines(html_wrapper, temp_clean_html, useBytes = TRUE)
+
+          webshot2::webshot(
+            url = temp_clean_html,
+            file = temp_png,
+            delay = 0.2,
+            zoom = scale_factor,
+            vwidth = base_width,
+            vheight = base_height,
+            ...
+          )
+
+          magick::image_read(temp_png)
+        }
       } else {
         magick::image_read(file)
       }
