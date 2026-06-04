@@ -465,15 +465,26 @@ kronar_plot <- function(df, count_col = NULL, fill_col = NULL, hier_cols = NULL,
 #' @param dataset_name Name of the dataset.
 #' @param collapse Logical. If TRUE, initial rendering collapses the hierarchy.
 #' @param delay Number of seconds to wait for the chart to render before taking the snapshot. Default is 1.0.
+#' @param format Output file format if \code{file} is NULL. Must be either "svg" (default) or "png".
+#' @param dpi Output resolution in DPI (dots per inch) for PNG. Only applicable when generating a PNG image. Default is 72.
 #' @param ... Additional arguments passed to `webshot2::webshot()` if standard screenshot fallback is used.
 #' @return Path to the generated snapshot file.
 #' @export
-kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, hier_cols = NULL, fill_palette = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, delay = 1.0, ...) {
+kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, hier_cols = NULL, fill_palette = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, delay = 1.0, format = "svg", dpi = 72, ...) {
   is_temp_file <- FALSE
   if (is.null(file)) {
-    file <- tempfile(fileext = ".png")
+    format_clean <- tolower(format)
+    if (!format_clean %in% c("svg", "png")) {
+      stop("format must be either 'svg' or 'png'.", call. = FALSE)
+    }
+    file <- tempfile(fileext = paste0(".", format_clean))
     is_temp_file <- TRUE
     on.exit(unlink(file), add = TRUE)
+  } else {
+    ext <- tolower(tools::file_ext(file))
+    if (!ext %in% c("svg", "png")) {
+      stop("Output file extension must be either '.svg' or '.png'.", call. = FALSE)
+    }
   }
 
   # Create a temporary HTML file for the chart
@@ -548,8 +559,8 @@ kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, 
     svg_content
   }
 
-  ext <- tools::file_ext(file)
-  is_svg <- tolower(ext) == "svg"
+  ext <- tolower(tools::file_ext(file))
+  is_svg <- ext == "svg"
 
   # Always extract the SVG content using our chromote helper
   svg_content <- extract_svg_via_chromote(temp_html, delay)
@@ -557,12 +568,31 @@ kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, 
   if (is_svg) {
     writeLines(svg_content, file, useBytes = TRUE)
   } else {
+    # Parse base dimensions from viewBox (e.g. viewBox="0 0 1002 708")
+    m <- regexec('viewBox="0 0 ([0-9.]+) ([0-9.]+)"', svg_content)
+    if (m[[1]][1] != -1) {
+      matches <- regmatches(svg_content, m)[[1]]
+      base_width <- as.numeric(matches[2])
+      base_height <- as.numeric(matches[3])
+    } else {
+      base_width <- 1002
+      base_height <- 708
+    }
+    if (is.na(base_width) || is.na(base_height) || base_width <= 0 || base_height <= 0) {
+      base_width <- 1002
+      base_height <- 708
+    }
+
+    scale_factor <- dpi / 72
+
     # Check if rsvg is available for high-quality vector conversion
     if (requireNamespace("rsvg", quietly = TRUE)) {
       temp_svg <- tempfile(fileext = ".svg")
       writeLines(svg_content, temp_svg, useBytes = TRUE)
       on.exit(unlink(temp_svg), add = TRUE)
-      rsvg::rsvg_png(temp_svg, file)
+      w_px <- round(base_width * scale_factor)
+      h_px <- round(base_height * scale_factor)
+      rsvg::rsvg_png(temp_svg, file, width = w_px, height = h_px)
     } else {
       # Fall back to screenshotting a clean HTML wrapper of the SVG content.
       # This ensures no interactive elements (buttons, panels, search box) are visible.
@@ -605,6 +635,9 @@ kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, 
           url = temp_clean_html,
           file = file,
           delay = 0.2, # short delay to render the static SVG
+          zoom = scale_factor,
+          vwidth = base_width,
+          vheight = base_height,
           ...
         )
       }, error = function(e) {

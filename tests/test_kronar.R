@@ -147,27 +147,43 @@ test_that("kronar_write and kronar_plot generate outputs", {
   expect_true(grepl("<krona", plot_tag$attribs$srcdoc, fixed = TRUE))
 })
 
-test_that("kronar_snapshot captures a PNG file", {
+test_that("kronar_snapshot handles different formats and DPI parameters", {
   test_df <- data.frame(
     Level1 = c("A", "B"),
     Counts = c(10, 20),
     stringsAsFactors = FALSE
   )
 
-  temp_png <- tempfile(fileext = ".png")
-  on.exit(unlink(temp_png), add = TRUE)
-
-  # Try to capture snapshot
+  # 1. Default format is SVG (if file = NULL)
   tryCatch({
-    res_obj <- kronar_snapshot(test_df, file = temp_png, delay = 0.5)
+    res_obj <- kronar_snapshot(test_df, file = NULL, delay = 0.5)
     expect_true(inherits(res_obj, "ggplot"))
-    expect_true(file.exists(temp_png))
-    expect_gt(file.info(temp_png)$size, 0)
-    message("Snapshot completed successfully. PNG size: ", file.info(temp_png)$size, " bytes")
   }, error = function(e) {
-    # If Chrome is not available on this headless system, webshot2 might fail.
-    # We catch it gracefully and print warning, but check that it behaves appropriately.
-    warning("webshot2 failed: ", e$message)
+    warning("Default SVG snapshot failed: ", e$message)
+  })
+
+  # 2. Specifying format = "png" and custom DPI resolution scaling
+  temp_png_72 <- tempfile(fileext = ".png")
+  temp_png_150 <- tempfile(fileext = ".png")
+  on.exit({
+    unlink(temp_png_72)
+    unlink(temp_png_150)
+  }, add = TRUE)
+
+  tryCatch({
+    kronar_snapshot(test_df, file = temp_png_72, dpi = 72, delay = 0.5)
+    kronar_snapshot(test_df, file = temp_png_150, dpi = 150, delay = 0.5)
+
+    expect_true(file.exists(temp_png_72))
+    expect_true(file.exists(temp_png_150))
+
+    size_72 <- file.info(temp_png_72)$size
+    size_150 <- file.info(temp_png_150)$size
+    expect_gt(size_72, 0)
+    expect_gt(size_150, size_72) # Higher DPI should result in a larger file size due to larger dimensions
+    message("DPI 72 size: ", size_72, " bytes. DPI 150 size: ", size_150, " bytes.")
+  }, error = function(e) {
+    warning("DPI and PNG snapshot failed: ", e$message)
   })
 })
 

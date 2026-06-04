@@ -15,6 +15,8 @@ kronar_snapshot(
   dataset_name = "Dataset",
   collapse = TRUE,
   delay = 1,
+  format = "svg",
+  dpi = 72,
   ...
 )
 }
@@ -38,6 +40,10 @@ kronar_snapshot(
 \item{collapse}{Logical. If TRUE, initial rendering collapses the hierarchy.}
 
 \item{delay}{Number of seconds to wait for the chart to render before taking the snapshot. Default is 1.0.}
+
+\item{format}{Output file format if \code{file} is NULL. Must be either "svg" (default) or "png".}
+
+\item{dpi}{Output resolution in DPI (dots per inch) for PNG. Only applicable when generating a PNG image. Default is 72.}
 
 \item{...}{Additional arguments passed to \code{webshot2::webshot()} if standard screenshot fallback is used.}
 }
