@@ -15,7 +15,8 @@ Imports:
     htmltools,
     webshot2,
     ggplot2,
-    magick
+    magick,
+    rsvg
 Suggests:
     png,
     grid,
