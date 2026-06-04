@@ -58,3 +58,24 @@ The input \code{df} must be a data frame containing:
 }
 }
 }
+\examples{
+# Create a sample hierarchical data frame
+df <- data.frame(
+  L1 = c("Bacteria", "Bacteria", "Eukaryota"),
+  L2 = c("Firmicutes", "Proteobacteria", "Chordata"),
+  Count = c(10, 20, 30),
+  Group = c("Pathogen", "NonPathogen", "NonPathogen"),
+  stringsAsFactors = FALSE
+)
+
+# Plot in R Viewer / Notebooks with custom categorical colors
+if (interactive()) {
+  kronar_plot(
+    df,
+    count_col = "Count",
+    fill_col = "Group",
+    fill_palette = c("Pathogen" = "red", "NonPathogen" = "green"),
+    root_name = "Life Forms"
+  )
+}
+}

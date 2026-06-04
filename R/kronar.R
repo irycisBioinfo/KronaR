@@ -420,6 +420,26 @@ kronar_write <- function(df, file, count_col = NULL, fill_col = NULL, hier_cols 
 #' @param height Height of the iframe (CSS layout, e.g. "600px").
 #' @return An `htmltools::tag` object representing the iframe.
 #' @importFrom htmltools tags HTML
+#' @examples
+#' # Create a sample hierarchical data frame
+#' df <- data.frame(
+#'   L1 = c("Bacteria", "Bacteria", "Eukaryota"),
+#'   L2 = c("Firmicutes", "Proteobacteria", "Chordata"),
+#'   Count = c(10, 20, 30),
+#'   Group = c("Pathogen", "NonPathogen", "NonPathogen"),
+#'   stringsAsFactors = FALSE
+#' )
+#' 
+#' # Plot in R Viewer / Notebooks with custom categorical colors
+#' if (interactive()) {
+#'   kronar_plot(
+#'     df,
+#'     count_col = "Count",
+#'     fill_col = "Group",
+#'     fill_palette = c("Pathogen" = "red", "NonPathogen" = "green"),
+#'     root_name = "Life Forms"
+#'   )
+#' }
 #' @export
 kronar_plot <- function(df, count_col = NULL, fill_col = NULL, hier_cols = NULL, fill_palette = NULL, root_name = "Root", dataset_name = "Dataset", collapse = TRUE, width = "100%", height = "600px") {
   xml_data <- kronar_xml(df, count_col = count_col, fill_col = fill_col, hier_cols = hier_cols, fill_palette = fill_palette, root_name = root_name, dataset_name = dataset_name, collapse = collapse)
