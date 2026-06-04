@@ -551,24 +551,60 @@ kronar_snapshot <- function(df, file = NULL, count_col = NULL, fill_col = NULL, 
   ext <- tools::file_ext(file)
   is_svg <- tolower(ext) == "svg"
 
+  # Always extract the SVG content using our chromote helper
+  svg_content <- extract_svg_via_chromote(temp_html, delay)
+
   if (is_svg) {
-    svg_content <- extract_svg_via_chromote(temp_html, delay)
     writeLines(svg_content, file, useBytes = TRUE)
   } else {
     # Check if rsvg is available for high-quality vector conversion
     if (requireNamespace("rsvg", quietly = TRUE)) {
-      svg_content <- extract_svg_via_chromote(temp_html, delay)
       temp_svg <- tempfile(fileext = ".svg")
       writeLines(svg_content, temp_svg, useBytes = TRUE)
       on.exit(unlink(temp_svg), add = TRUE)
       rsvg::rsvg_png(temp_svg, file)
     } else {
-      # Fall back to standard webshot2 screenshot
+      # Fall back to screenshotting a clean HTML wrapper of the SVG content.
+      # This ensures no interactive elements (buttons, panels, search box) are visible.
+      temp_clean_html <- tempfile(fileext = ".html")
+      on.exit(unlink(temp_clean_html), add = TRUE)
+
+      # Strip XML declaration and doctype to embed cleanly as inline HTML5 SVG
+      svg_clean <- gsub("^<\\?xml[^>]*\\?>\\s*", "", svg_content)
+      svg_clean <- gsub("^<!DOCTYPE[^>]*>\\s*", "", svg_clean)
+
+      html_wrapper <- paste(
+        "<!DOCTYPE html>",
+        "<html>",
+        "<head>",
+        "<style>",
+        "  html, body {",
+        "    margin: 0;",
+        "    padding: 0;",
+        "    width: 100%;",
+        "    height: 100%;",
+        "    overflow: hidden;",
+        "    background-color: transparent;",
+        "  }",
+        "  svg {",
+        "    width: 100%;",
+        "    height: 100%;",
+        "  }",
+        "</style>",
+        "</head>",
+        "<body>",
+        svg_clean,
+        "</body>",
+        "</html>",
+        sep = "\n"
+      )
+      writeLines(html_wrapper, temp_clean_html, useBytes = TRUE)
+
       tryCatch({
         webshot2::webshot(
-          url = temp_html,
+          url = temp_clean_html,
           file = file,
-          delay = delay,
+          delay = 0.2, # short delay to render the static SVG
           ...
         )
       }, error = function(e) {
