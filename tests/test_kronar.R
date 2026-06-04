@@ -310,4 +310,29 @@ test_that("continuous coloring works with a Viridis palette", {
   expect_true(grepl('color="#FDE333"', xml_viridis, ignore.case = TRUE))
 })
 
+test_that("kronar_plot S3 print and class resolution work correctly", {
+  test_df <- data.frame(
+    Level1 = c("A", "B"),
+    Counts = c(10, 20),
+    stringsAsFactors = FALSE
+  )
+
+  plot_tag <- kronar_plot(test_df)
+
+  # Assert class vector contains kronar_plot and shiny.tag
+  expect_true("kronar_plot" %in% class(plot_tag))
+  expect_true("shiny.tag" %in% class(plot_tag))
+
+  # Test print method (in non-interactive test mode)
+  # It should fall back to default print and output raw iframe markup
+  output_text <- capture.output(print(plot_tag))
+  expect_true(any(grepl("<iframe", output_text)))
+
+  # Test knit_print fallback (by mock calling knit_print if knitr is available)
+  if (requireNamespace("knitr", quietly = TRUE)) {
+    knit_res <- knitr::knit_print(plot_tag)
+    expect_true(inherits(knit_res, "asis") || any(grepl("<iframe", as.character(knit_res))))
+  }
+})
+
 cat("\nAll tests completed successfully!\n")

@@ -461,13 +461,45 @@ kronar_plot <- function(df, count_col = NULL, fill_col = NULL, hier_cols = NULL,
   html_data <- kronar_html(xml_data)
 
   # Return an iframe containing the html code in srcdoc
-  htmltools::tags$iframe(
+  res <- htmltools::tags$iframe(
     srcdoc = html_data,
     width = width,
     height = height,
     style = "border: none; margin: 0; padding: 0; overflow: hidden;",
     class = "kronar-chart"
   )
+  class(res) <- c("kronar_plot", class(res))
+  res
+}
+
+#' Print Kronar Plot
+#'
+#' Automatically displays the Krona plot in a web browser or viewer if run in
+#' interactive mode, or prints the HTML markup otherwise.
+#'
+#' @param x An object of class \code{kronar_plot}.
+#' @param ... Additional arguments passed to print methods.
+#' @return The original object, invisibly.
+#' @export
+print.kronar_plot <- function(x, ...) {
+  if (interactive()) {
+    htmltools::html_print(x)
+  } else {
+    class(x) <- setdiff(class(x), "kronar_plot")
+    print(x, ...)
+  }
+  invisible(x)
+}
+
+#' Knit Print Method for Kronar Plot
+#'
+#' @param x An object of class \code{kronar_plot}.
+#' @param ... Additional arguments passed to knit_print.
+#' @return Knitted HTML markup.
+#' @exportS3Method knitr::knit_print
+knit_print.kronar_plot <- function(x, ...) {
+  class(x) <- setdiff(class(x), "kronar_plot")
+  knitr::knit_print(x, ...)
 }
 
 #' Take a Static SVG or PNG Snapshot of a Krona Chart
