@@ -218,16 +218,30 @@ resolve_fill_colors <- function(df, fill_col, fill_palette = NULL) {
   if (is.null(fill_palette)) {
     # Generate Set 2 colors from hcl.colors
     palette_cols <- grDevices::hcl.colors(n_unique, palette = "Set 2")
+    color_map <- setNames(palette_cols, unique_vals)
+  } else if (!is.null(names(fill_palette))) {
+    # Named vector: explicit custom mapping (manual scale)
+    color_map <- fill_palette[unique_vals]
+    names(color_map) <- unique_vals
+
+    # Check if there are any unmapped categories (NA values in color_map)
+    missing_idx <- which(is.na(color_map))
+    if (length(missing_idx) > 0) {
+      # Fallback for missing/unmapped values using Set 2 colors
+      fallback_cols <- grDevices::hcl.colors(length(missing_idx), palette = "Set 2")
+      color_map[missing_idx] <- fallback_cols
+    }
   } else {
+    # Unnamed vector: sequential mapping
     if (length(fill_palette) >= n_unique) {
       palette_cols <- fill_palette[1:n_unique]
     } else {
       # Recycled palette colors
       palette_cols <- rep_len(fill_palette, n_unique)
     }
+    color_map <- setNames(palette_cols, unique_vals)
   }
 
-  color_map <- setNames(palette_cols, unique_vals)
   if ("" %in% names(color_map)) {
     color_map[""] <- ""
   }

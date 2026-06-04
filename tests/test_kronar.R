@@ -263,4 +263,26 @@ test_that("kronar_snapshot can export a vector SVG file using internal JS routin
   })
 })
 
+test_that("categorical coloring works correctly with discrete categories and custom mapping", {
+  df <- data.frame(
+    L1 = c("Bacteria", "Bacteria", "Eukaryota"),
+    L2 = c("Proteobacteria", "Firmicutes", "Chordata"),
+    Abundance = c(10, 20, 30),
+    Category = c("Pathogen", "NonPathogen", "NonPathogen"),
+    stringsAsFactors = FALSE
+  )
+
+  # Test auto-palette assignment (default)
+  xml_auto <- kronar_xml(df, count_col = "Abundance", fill_col = "Category")
+  expect_true(any(grepl('color="#', xml_auto, fixed = TRUE)))
+
+  # Test custom named vector (manual scale mapping)
+  custom_palette <- c("Pathogen" = "#FF0000", "NonPathogen" = "#00FF00")
+  xml_custom <- kronar_xml(df, count_col = "Abundance", fill_col = "Category", fill_palette = custom_palette)
+
+  # Check that colors are mapped exactly as specified in custom_palette
+  expect_true(grepl('color="#FF0000"', xml_custom, fixed = TRUE))
+  expect_true(grepl('color="#00FF00"', xml_custom, fixed = TRUE))
+})
+
 cat("\nAll tests completed successfully!\n")
