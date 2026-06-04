@@ -269,6 +269,7 @@ var magnitudeIndex; // the index of attribute arrays used for magnitude
 var membersAssignedIndex;
 var membersSummaryIndex;
 var customLegend;
+var tooltipDiv;
 
 // For defining gradients
 //
@@ -4066,6 +4067,15 @@ function draw()
 	{
 		drawLegend();
 	}
+	
+	if ( ! snapshotMode && highlightedNode && highlightedNode != selectedNode )
+	{
+		updateTooltip(highlightedNode);
+	}
+	else
+	{
+		hideTooltip();
+	}
 }
 
 function drawBubble(angle, radius, width, radial, flip)
@@ -4278,6 +4288,51 @@ function drawCustomLegendSVG()
 	}
 	
 	svg += text;
+}
+
+function updateTooltip(node) {
+	if (!tooltipDiv) return;
+	
+	var html = '<div style="font-weight: bold; margin-bottom: 4px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px;">' + node.name + '</div>';
+	html += '<div><strong>Magnitude:</strong> ' + node.magnitude;
+	if (selectedNode && selectedNode.magnitude > 0) {
+		var pct = Math.round((node.magnitude / selectedNode.magnitude) * 1000) / 10;
+		html += ' (' + pct + '%)';
+	}
+	html += '</div>';
+	
+	var fillValueIndex = attributeIndex('fill_value');
+	if (fillValueIndex !== null && fillValueIndex !== undefined && node.attributes[fillValueIndex] !== undefined) {
+		var fillVal = node.attributes[fillValueIndex][currentDataset];
+		if (fillVal !== undefined && fillVal !== null && fillVal !== '') {
+			html += '<div><strong>' + attributes[fillValueIndex].displayName + ':</strong> ' + fillVal + '</div>';
+		}
+	}
+	
+	tooltipDiv.innerHTML = html;
+	tooltipDiv.style.display = 'block';
+	
+	var tooltipWidth = tooltipDiv.offsetWidth;
+	var tooltipHeight = tooltipDiv.offsetHeight;
+	
+	var x = mouseX + 15;
+	var y = mouseY + 15;
+	
+	if (x + tooltipWidth > window.innerWidth) {
+		x = mouseX - tooltipWidth - 15;
+	}
+	if (y + tooltipHeight > window.innerHeight) {
+		y = mouseY - tooltipHeight - 15;
+	}
+	
+	tooltipDiv.style.left = x + 'px';
+	tooltipDiv.style.top = y + 'px';
+}
+
+function hideTooltip() {
+	if (tooltipDiv) {
+		tooltipDiv.style.display = 'none';
+	}
 }
 
 function drawLegend()
@@ -5000,6 +5055,23 @@ function load()
 	document.body.style.margin = 0;
 	
 	createCanvas();
+	
+	tooltipDiv = document.createElement('div');
+	tooltipDiv.id = 'krona-tooltip';
+	tooltipDiv.style.position = 'absolute';
+	tooltipDiv.style.display = 'none';
+	tooltipDiv.style.pointerEvents = 'none';
+	tooltipDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+	tooltipDiv.style.color = '#fff';
+	tooltipDiv.style.padding = '8px 12px';
+	tooltipDiv.style.borderRadius = '4px';
+	tooltipDiv.style.fontFamily = 'sans-serif';
+	tooltipDiv.style.fontSize = '12px';
+	tooltipDiv.style.lineHeight = '1.4';
+	tooltipDiv.style.zIndex = '9999';
+	tooltipDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+	tooltipDiv.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+	document.body.appendChild(tooltipDiv);
 	
 	if ( context == undefined )
 	{
