@@ -268,6 +268,7 @@ var attributes = new Array();
 var magnitudeIndex; // the index of attribute arrays used for magnitude
 var membersAssignedIndex;
 var membersSummaryIndex;
+var customLegend;
 
 // For defining gradients
 //
@@ -1720,8 +1721,16 @@ function Node()
 		
 		if (showMagnitude)
 		{
-    		label += ' [' + this.magnitude + ']'
-    	}
+			var fillText = '';
+			var fillValueIndex = attributeIndex('fill_value');
+			if (fillValueIndex !== null && fillValueIndex !== undefined && this.attributes[fillValueIndex] !== undefined) {
+				var fillVal = this.attributes[fillValueIndex][currentDataset];
+				if (fillVal !== undefined && fillVal !== null && fillVal !== '') {
+					fillText = ', ' + attributes[fillValueIndex].displayName + ': ' + fillVal;
+				}
+			}
+			label += ' [' + this.magnitude + fillText + ']';
+		}
 		
 		var flipped = drawTextPolar
 		(
@@ -4049,7 +4058,11 @@ function draw()
 	//context.font = fontNormal;
 	pathRoot.drawMap(pathRoot);
 	
-	if ( hueDisplayName && useHue() )
+	if ( customLegend )
+	{
+		drawCustomLegend();
+	}
+	else if ( hueDisplayName && useHue() )
 	{
 		drawLegend();
 	}
@@ -4162,6 +4175,109 @@ function drawHistory()
 	}
 	
 	context.globalAlpha = 1;
+}
+
+function drawCustomLegend()
+{
+	if ( ! customLegend ) return;
+	
+	var left = imageWidth * .01;
+	var width = imageHeight * .0265;
+	var height = imageHeight * .15;
+	var top = imageHeight - fontSize * 3.5 - height;
+	var textLeft = left + width + fontSize / 2;
+	
+	if ( customLegend.type == 'continuous' )
+	{
+		context.fillStyle = 'black';
+		context.textAlign = 'start';
+		context.font = fontNormal;
+		context.fillText(customLegend.title, left, imageHeight - fontSize * 1.5);
+		context.fillText(customLegend.min, textLeft, top + height);
+		context.fillText(customLegend.max, textLeft, top);
+		
+		var gradient = context.createLinearGradient(0, top + height, 0, top);
+		var nColors = customLegend.colors.length;
+		for ( var i = 0; i < nColors; i++ )
+		{
+			gradient.addColorStop(i / (nColors - 1), customLegend.colors[i]);
+		}
+		
+		context.fillStyle = gradient;
+		context.fillRect(left, top, width, height);
+		context.lineWidth = thinLineWidth;
+		context.strokeRect(left, top, width, height);
+	}
+	else if ( customLegend.type == 'discrete' )
+	{
+		var y = imageHeight - fontSize * 3.5;
+		for ( var i = customLegend.items.length - 1; i >= 0; i-- )
+		{
+			var item = customLegend.items[i];
+			context.fillStyle = item.color;
+			context.fillRect(left, y - fontSize, fontSize, fontSize);
+			context.lineWidth = thinLineWidth;
+			context.strokeRect(left, y - fontSize, fontSize, fontSize);
+			
+			context.fillStyle = 'black';
+			context.textAlign = 'start';
+			context.font = fontNormal;
+			context.fillText(item.name, textLeft, y - fontSize * 0.1);
+			
+			y -= fontSize * 1.5;
+		}
+		
+		context.fillStyle = 'black';
+		context.textAlign = 'start';
+		context.font = fontNormal;
+		context.fillText(customLegend.title, left, y - fontSize * 0.5);
+	}
+}
+
+function drawCustomLegendSVG()
+{
+	if ( ! customLegend ) return;
+	
+	var left = imageWidth * .01;
+	var width = imageHeight * .0265;
+	var height = imageHeight * .15;
+	var top = imageHeight - fontSize * 3.5 - height;
+	var textLeft = left + width + fontSize / 2;
+	
+	var text = '';
+	
+	if ( customLegend.type == 'continuous' )
+	{
+		text += svgText(customLegend.title, left, imageHeight - fontSize * 1.5);
+		text += svgText(customLegend.min, textLeft, top + height);
+		text += svgText(customLegend.max, textLeft, top);
+		
+		var svgGradient = '<linearGradient id="customGradient" x1="0%" y1="100%" x2="0%" y2="0%">';
+		var nColors = customLegend.colors.length;
+		for ( var i = 0; i < nColors; i++ )
+		{
+			var offset = Math.round((i / (nColors - 1)) * 100);
+			svgGradient += '<stop offset="' + offset + '%" style="stop-color:' + customLegend.colors[i] + '"/>';
+		}
+		svgGradient += '</linearGradient>';
+		
+		svg += svgGradient;
+		svg += '<rect style="fill:url(#customGradient);stroke:black;stroke-width:' + thinLineWidth + '" x="' + left + '" y="' + top + '" width="' + width + '" height="' + height + '"/>';
+	}
+	else if ( customLegend.type == 'discrete' )
+	{
+		var y = imageHeight - fontSize * 3.5;
+		for ( var i = customLegend.items.length - 1; i >= 0; i-- )
+		{
+			var item = customLegend.items[i];
+			svg += '<rect style="fill:' + item.color + ';stroke:black;stroke-width:' + thinLineWidth + '" x="' + left + '" y="' + (y - fontSize) + '" width="' + fontSize + '" height="' + fontSize + '"/>';
+			text += svgText(item.name, textLeft, y - fontSize * 0.1);
+			y -= fontSize * 1.5;
+		}
+		text += svgText(customLegend.title, left, y - fontSize * 0.5);
+	}
+	
+	svg += text;
 }
 
 function drawLegend()
@@ -5039,6 +5155,42 @@ function load()
 				if ( element.getAttribute('default') == 'true' )
 				{
 					hueDefault = true;
+				}
+				break;
+
+			case 'legend':
+				var type = element.getAttribute('type');
+				var title = element.getAttribute('title');
+				customLegend = {
+					type: type,
+					title: title
+				};
+				if ( type == 'continuous' )
+				{
+					customLegend.colors = new Array();
+					customLegend.min = Number(element.getAttribute('min'));
+					customLegend.max = Number(element.getAttribute('max'));
+					for ( var child = getFirstChild(element); child; child = getNextSibling(child) )
+					{
+						if ( child.tagName.toLowerCase() == 'color' )
+						{
+							customLegend.colors.push(child.firstChild.nodeValue);
+						}
+					}
+				}
+				else if ( type == 'discrete' )
+				{
+					customLegend.items = new Array();
+					for ( var child = getFirstChild(element); child; child = getNextSibling(child) )
+					{
+						if ( child.tagName.toLowerCase() == 'item' )
+						{
+							customLegend.items.push({
+								color: child.getAttribute('color'),
+								name: child.firstChild.nodeValue
+							});
+						}
+					}
 				}
 				break;
 			
@@ -6136,7 +6288,11 @@ function snapshot()
 		focusNode.drawHighlight(true);
 	}
 	
-	if ( hueDisplayName && useHue() )
+	if ( customLegend )
+	{
+		drawCustomLegendSVG();
+	}
+	else if ( hueDisplayName && useHue() )
 	{
 		drawLegendSVG();
 	}

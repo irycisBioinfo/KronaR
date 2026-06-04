@@ -54,18 +54,19 @@ kronar_xml <- function(df, count_col = NULL, fill_col = NULL, hier_cols = NULL, 
   }
 
   # Node environment constructor helper
-  NodeEnv <- function(name = "Root", value = 0, color = NULL, fill_sum = 0) {
+  NodeEnv <- function(name = "Root", value = 0, color = NULL, fill_sum = 0, category = NULL) {
     env <- new.env(parent = emptyenv())
     env$name <- name
     env$value <- value
     env$color <- color
     env$fill_sum <- fill_sum
+    env$category <- category
     env$children <- list()
     env
   }
 
   # Helper to recursively add path
-  add_path <- function(root_env, path, count, color = NULL, fill_val = NULL) {
+  add_path <- function(root_env, path, count, color = NULL, fill_val = NULL, category = NULL) {
     curr <- root_env
     curr$value <- curr$value + count
     if (!is.null(fill_val)) {
@@ -77,11 +78,15 @@ kronar_xml <- function(df, count_col = NULL, fill_col = NULL, hier_cols = NULL, 
       step <- path[i]
       if (!step %in% names(curr$children)) {
         node_color <- if (i == n && !is.null(color) && color != "") color else NULL
-        new_node <- NodeEnv(name = step, value = 0, color = node_color, fill_sum = 0)
+        node_category <- if (i == n) category else NULL
+        new_node <- NodeEnv(name = step, value = 0, color = node_color, fill_sum = 0, category = node_category)
         curr$children[[step]] <- new_node
       } else {
         if (i == n && !is.null(color) && color != "") {
           curr$children[[step]]$color <- color
+        }
+        if (i == n && !is.null(category)) {
+          curr$children[[step]]$category <- category
         }
       }
       curr <- curr$children[[step]]
@@ -114,6 +119,7 @@ kronar_xml <- function(df, count_col = NULL, fill_col = NULL, hier_cols = NULL, 
     
     color_val <- if (!is.null(colors)) colors[i] else NULL
     fill_val <- if (is_numeric_fill) fill_vals[i] else NULL
+    category_val <- if (!is.null(fill_col) && !is_numeric_fill) as.character(df[[fill_col_name]])[i] else NULL
     
     if (length(path) == 0) {
       root_node$value <- root_node$value + counts[i]
@@ -123,9 +129,12 @@ kronar_xml <- function(df, count_col = NULL, fill_col = NULL, hier_cols = NULL, 
       if (!is.null(fill_val)) {
         root_node$fill_sum <- root_node$fill_sum + (fill_val * counts[i])
       }
+      if (!is.null(category_val)) {
+        root_node$category <- category_val
+      }
       next
     }
-    add_path(root_node, path, counts[i], color_val, fill_val)
+    add_path(root_node, path, counts[i], color_val, fill_val, category_val)
   }
 
   # If root value is still 0 (e.g. all counts were 0 or negative), check counts
@@ -247,6 +256,27 @@ kronar_xml <- function(df, count_col = NULL, fill_col = NULL, hier_cols = NULL, 
     node_open <- sprintf('%s<node name="%s"%s>', indent_str, escaped_name, color_attr)
     node_val <- sprintf('%s  <magnitude><val>%s</val></magnitude>', indent_str, format(node$value, scientific = FALSE, justify = "none", trim = TRUE))
 
+    # Add fill_value if fill_col is specified
+    if (!is.null(fill_col)) {
+      if (is_numeric_fill) {
+        prop <- if (node$value > 0) node$fill_sum / node$value else 0
+        prop_val <- round(prop, 4)
+        node_val <- paste(
+          node_val,
+          sprintf('%s  <fill_value><val>%s</val></fill_value>', indent_str, prop_val),
+          sep = "\n"
+        )
+      } else {
+        if (!is.null(node$category) && node$category != "") {
+          node_val <- paste(
+            node_val,
+            sprintf('%s  <fill_value><val>%s</val></fill_value>', indent_str, escape_xml(node$category)),
+            sep = "\n"
+          )
+        }
+      }
+    }
+
     if (length(node$children) == 0) {
       return(paste(node_open, node_val, sprintf('%s</node>', indent_str), sep = "\n"))
     }
@@ -267,16 +297,73 @@ kronar_xml <- function(df, count_col = NULL, fill_col = NULL, hier_cols = NULL, 
   # Build the outer Krona wrapper
   collapse_str <- if (collapse) "true" else "false"
 
-  xml_header <- paste(
-    sprintf('<krona collapse="%s" key="true">', collapse_str),
+  # Construct attributes block
+  attributes_xml <- paste(
     '  <attributes magnitude="magnitude">',
     '    <attribute display="Magnitude">magnitude</attribute>',
-    '  </attributes>',
+    sep = "\n"
+  )
+  if (!is.null(fill_col)) {
+    fill_display_name <- if (is.numeric(fill_col)) colnames(df)[as.integer(fill_col)] else fill_col
+    attributes_xml <- paste(
+      attributes_xml,
+      sprintf('    <attribute display="%s">fill_value</attribute>', escape_xml(fill_display_name)),
+      sep = "\n"
+    )
+  }
+  attributes_xml <- paste(attributes_xml, '  </attributes>', sep = "\n")
+
+  # Construct legend block
+  legend_xml <- ""
+  if (!is.null(fill_col)) {
+    fill_display_name <- if (is.numeric(fill_col)) colnames(df)[as.integer(fill_col)] else fill_col
+    if (is_numeric_fill) {
+      vals_clean <- fill_vals[!is.na(fill_vals)]
+      min_val <- if (length(vals_clean) > 0) min(vals_clean) else 0
+      max_val <- if (length(vals_clean) > 0) max(vals_clean) else 1
+      palette_cols <- if (is.null(fill_palette)) c("#313695", "#74add1", "#fee090", "#fdae61", "#d73027") else fill_palette
+      
+      color_nodes <- paste(sprintf('    <color>%s</color>', palette_cols), collapse = "\n")
+      legend_xml <- paste(
+        sprintf('  <legend type="continuous" title="%s" min="%s" max="%s">', escape_xml(fill_display_name), min_val, max_val),
+        color_nodes,
+        '  </legend>',
+        sep = "\n"
+      )
+    } else {
+      # Discrete categories
+      unique_cats <- unique(as.character(df[[fill_col_name]]))
+      unique_cats <- unique_cats[unique_cats != "" & !is.na(unique_cats)]
+      
+      item_nodes <- character(0)
+      for (cat in unique_cats) {
+        idx <- which(as.character(df[[fill_col_name]]) == cat)[1]
+        if (!is.na(idx) && !is.null(colors)) {
+          item_nodes <- c(item_nodes, sprintf('    <item color="%s">%s</item>', colors[idx], escape_xml(cat)))
+        }
+      }
+      item_nodes_str <- paste(item_nodes, collapse = "\n")
+      legend_xml <- paste(
+        sprintf('  <legend type="discrete" title="%s">', escape_xml(fill_display_name)),
+        item_nodes_str,
+        '  </legend>',
+        sep = "\n"
+      )
+    }
+  }
+
+  xml_header <- paste(
+    sprintf('<krona collapse="%s" key="true">', collapse_str),
+    attributes_xml,
     '  <datasets>',
     sprintf('    <dataset>%s</dataset>', escape_xml(dataset_name)),
     '  </datasets>',
     sep = "\n"
   )
+
+  if (legend_xml != "") {
+    xml_header <- paste(xml_header, legend_xml, sep = "\n")
+  }
 
   root_xml <- node_to_xml(root_node, 1)
   xml_footer <- '</krona>'

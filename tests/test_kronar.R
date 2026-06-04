@@ -335,4 +335,36 @@ test_that("kronar_plot S3 print and class resolution work correctly", {
   }
 })
 
+test_that("custom legends and target attributes are written to XML correctly", {
+  df <- data.frame(
+    L1 = c("A", "B"),
+    Counts = c(10, 20),
+    Presence = c(0.8, 0.4),
+    stringsAsFactors = FALSE
+  )
+  xml_str <- kronar_xml(df, count_col = "Counts", fill_col = "Presence")
+  
+  # Check attributes declaration has fill_value and display name
+  expect_true(grepl('<attribute display="Presence">fill_value</attribute>', xml_str, fixed = TRUE))
+  
+  # Check legend continuous structure
+  expect_true(grepl('<legend type="continuous" title="Presence" min="0.4" max="0.8">', xml_str, fixed = TRUE))
+  
+  # Check node values have fill_value elements
+  expect_true(grepl('<fill_value><val>0.8</val></fill_value>', xml_str, fixed = TRUE))
+  expect_true(grepl('<fill_value><val>0.4</val></fill_value>', xml_str, fixed = TRUE))
+
+  # Test for discrete legend
+  df_discrete <- data.frame(
+    L1 = c("A", "B"),
+    Counts = c(10, 20),
+    Group = c("Pathogen", "NonPathogen"),
+    stringsAsFactors = FALSE
+  )
+  xml_disc <- kronar_xml(df_discrete, count_col = "Counts", fill_col = "Group")
+  expect_true(grepl('<attribute display="Group">fill_value</attribute>', xml_disc, fixed = TRUE))
+  expect_true(grepl('<legend type="discrete" title="Group">', xml_disc, fixed = TRUE))
+  expect_true(grepl('<item color="', xml_disc, fixed = TRUE))
+})
+
 cat("\nAll tests completed successfully!\n")
