@@ -21,7 +21,7 @@ kronar_write(
 
 \item{file}{Path to the output HTML file.}
 
-\item{count_col}{Name or index of the count column.}
+\item{count_col}{Name or index of the numeric column containing pre-aggregated counts (abundances/weights).}
 
 \item{fill_col}{Name or index of the fill column.}
 
@@ -45,7 +45,7 @@ Generates the self-contained HTML chart and writes it to a file.
 The input \code{df} must be a data frame containing:
 \itemize{
 \item \strong{Hierarchical Columns:} One or more character or factor columns representing the hierarchy (e.g., taxonomic ranks like Kingdom, Phylum, Class, Order, Family, Genus, Species, and leaf node identifiers like Genome ID). These columns should be ordered from highest rank (leftmost) to lowest rank (rightmost). Any empty string (\code{""}) or \code{NA} value at an intermediate level is treated as unclassified and will truncate the hierarchy path for that row.
-\item \strong{Count Column:} A numeric column specifying the abundance, magnitude, or weight for each row. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value in this column is treated as \code{0}.
+\item \strong{Count Column (Pre-aggregated):} A numeric column specifying the pre-aggregated abundance, magnitude, weight, or frequency for each row. The input data frame must consist of pre-aggregated records (each row representing a unique hierarchical path with its total count), where this column contains the result of that aggregation. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value is treated as \code{0}.
 \item \strong{Fill Column (Optional):} A column containing values used to determine colors. This column is excluded from the hierarchical structure and is specified via the \code{fill_col} parameter. It can contain:
 \itemize{
 \item Numeric values (for continuous color scale mapping and node proportion recalculation).

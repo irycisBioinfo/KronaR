@@ -18,7 +18,7 @@ escape_xml <- function(x) {
 #' Validate and parse the input data frame for KronaR
 #'
 #' @param df A data frame.
-#' @param count_col Name or index of the column containing counts.
+#' @param count_col Name or index of the numeric column containing pre-aggregated counts (abundances/weights).
 #' @param fill_col Name or index of the column containing fill values/colors.
 #' @param hier_cols Optional character vector of column names or numeric vector of column indices representing the hierarchical structure. If NULL, all columns except count_col and fill_col are used.
 #' @return A list containing `hier` (a data frame of character columns) and `counts` (a numeric vector).

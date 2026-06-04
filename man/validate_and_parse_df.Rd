@@ -9,7 +9,7 @@ validate_and_parse_df(df, count_col = NULL, fill_col = NULL, hier_cols = NULL)
 \arguments{
 \item{df}{A data frame.}
 
-\item{count_col}{Name or index of the column containing counts.}
+\item{count_col}{Name or index of the numeric column containing pre-aggregated counts (abundances/weights).}
 
 \item{fill_col}{Name or index of the column containing fill values/colors.}
 

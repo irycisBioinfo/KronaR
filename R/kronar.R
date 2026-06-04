@@ -6,7 +6,7 @@
 #' The input \code{df} must be a data frame containing:
 #' \itemize{
 #'   \item \strong{Hierarchical Columns:} One or more character or factor columns representing the hierarchy (e.g., taxonomic ranks like Kingdom, Phylum, Class, Order, Family, Genus, Species, and leaf node identifiers like Genome ID). These columns should be ordered from highest rank (leftmost) to lowest rank (rightmost). Any empty string (\code{""}) or \code{NA} value at an intermediate level is treated as unclassified and will truncate the hierarchy path for that row.
-#'   \item \strong{Count Column:} A numeric column specifying the abundance, magnitude, or weight for each row. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value in this column is treated as \code{0}.
+#'   \item \strong{Count Column (Pre-aggregated):} A numeric column specifying the pre-aggregated abundance, magnitude, weight, or frequency for each row. The input data frame must consist of pre-aggregated records (each row representing a unique hierarchical path with its total count), where this column contains the result of that aggregation. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value is treated as \code{0}.
 #'   \item \strong{Fill Column (Optional):} A column containing values used to determine colors. This column is excluded from the hierarchical structure and is specified via the \code{fill_col} parameter. It can contain:
 #'     \itemize{
 #'       \item Numeric values (for continuous color scale mapping and node proportion recalculation).
@@ -16,7 +16,7 @@
 #' }
 #'
 #' @param df A data frame.
-#' @param count_col Name or index of the column containing counts. If NULL, the first numeric column is used.
+#' @param count_col Name or index of the numeric column containing pre-aggregated counts (abundances/weights). If NULL, the first numeric column is used.
 #' @param fill_col Name or index of the column containing fill values (colors, numeric gradients, or discrete categories). If NULL, colors are dynamically assigned by Krona.
 #' @param hier_cols Optional character vector of column names or numeric vector of column indices representing the hierarchical structure. If NULL, all columns except count_col and fill_col are used.
 #' @param fill_palette Optional custom color palette. For numeric columns, a vector of colors defining a gradient. For discrete columns, a vector of colors or name of a palette.
@@ -362,7 +362,7 @@ kronar_html <- function(xml_data) {
 #' The input \code{df} must be a data frame containing:
 #' \itemize{
 #'   \item \strong{Hierarchical Columns:} One or more character or factor columns representing the hierarchy (e.g., taxonomic ranks like Kingdom, Phylum, Class, Order, Family, Genus, Species, and leaf node identifiers like Genome ID). These columns should be ordered from highest rank (leftmost) to lowest rank (rightmost). Any empty string (\code{""}) or \code{NA} value at an intermediate level is treated as unclassified and will truncate the hierarchy path for that row.
-#'   \item \strong{Count Column:} A numeric column specifying the abundance, magnitude, or weight for each row. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value in this column is treated as \code{0}.
+#'   \item \strong{Count Column (Pre-aggregated):} A numeric column specifying the pre-aggregated abundance, magnitude, weight, or frequency for each row. The input data frame must consist of pre-aggregated records (each row representing a unique hierarchical path with its total count), where this column contains the result of that aggregation. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value is treated as \code{0}.
 #'   \item \strong{Fill Column (Optional):} A column containing values used to determine colors. This column is excluded from the hierarchical structure and is specified via the \code{fill_col} parameter. It can contain:
 #'     \itemize{
 #'       \item Numeric values (for continuous color scale mapping and node proportion recalculation).
@@ -373,7 +373,7 @@ kronar_html <- function(xml_data) {
 #'
 #' @param df A data frame.
 #' @param file Path to the output HTML file.
-#' @param count_col Name or index of the count column.
+#' @param count_col Name or index of the numeric column containing pre-aggregated counts (abundances/weights).
 #' @param fill_col Name or index of the fill column.
 #' @param hier_cols Optional character vector of column names or numeric vector of column indices representing the hierarchical structure. If NULL, all columns except count_col and fill_col are used.
 #' @param fill_palette Optional custom color palette.
@@ -399,7 +399,7 @@ kronar_write <- function(df, file, count_col = NULL, fill_col = NULL, hier_cols 
 #' The input \code{df} must be a data frame containing:
 #' \itemize{
 #'   \item \strong{Hierarchical Columns:} One or more character or factor columns representing the hierarchy (e.g., taxonomic ranks like Kingdom, Phylum, Class, Order, Family, Genus, Species, and leaf node identifiers like Genome ID). These columns should be ordered from highest rank (leftmost) to lowest rank (rightmost). Any empty string (\code{""}) or \code{NA} value at an intermediate level is treated as unclassified and will truncate the hierarchy path for that row.
-#'   \item \strong{Count Column:} A numeric column specifying the abundance, magnitude, or weight for each row. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value in this column is treated as \code{0}.
+#'   \item \strong{Count Column (Pre-aggregated):} A numeric column specifying the pre-aggregated abundance, magnitude, weight, or frequency for each row. The input data frame must consist of pre-aggregated records (each row representing a unique hierarchical path with its total count), where this column contains the result of that aggregation. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value is treated as \code{0}.
 #'   \item \strong{Fill Column (Optional):} A column containing values used to determine colors. This column is excluded from the hierarchical structure and is specified via the \code{fill_col} parameter. It can contain:
 #'     \itemize{
 #'       \item Numeric values (for continuous color scale mapping and node proportion recalculation).
@@ -409,7 +409,7 @@ kronar_write <- function(df, file, count_col = NULL, fill_col = NULL, hier_cols 
 #' }
 #'
 #' @param df A data frame.
-#' @param count_col Name or index of the count column.
+#' @param count_col Name or index of the numeric column containing pre-aggregated counts (abundances/weights).
 #' @param fill_col Name or index of the fill column.
 #' @param hier_cols Optional character vector of column names or numeric vector of column indices representing the hierarchical structure. If NULL, all columns except count_col and fill_col are used.
 #' @param fill_palette Optional custom color palette.
@@ -481,7 +481,7 @@ kronar_plot <- function(df, count_col = NULL, fill_col = NULL, hier_cols = NULL,
 #' The input \code{df} must be a data frame containing:
 #' \itemize{
 #'   \item \strong{Hierarchical Columns:} One or more character or factor columns representing the hierarchy (e.g., taxonomic ranks like Kingdom, Phylum, Class, Order, Family, Genus, Species, and leaf node identifiers like Genome ID). These columns should be ordered from highest rank (leftmost) to lowest rank (rightmost). Any empty string (\code{""}) or \code{NA} value at an intermediate level is treated as unclassified and will truncate the hierarchy path for that row.
-#'   \item \strong{Count Column:} A numeric column specifying the abundance, magnitude, or weight for each row. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value in this column is treated as \code{0}.
+#'   \item \strong{Count Column (Pre-aggregated):} A numeric column specifying the pre-aggregated abundance, magnitude, weight, or frequency for each row. The input data frame must consist of pre-aggregated records (each row representing a unique hierarchical path with its total count), where this column contains the result of that aggregation. The column to use can be specified via the \code{count_col} parameter. Any \code{NA} value is treated as \code{0}.
 #'   \item \strong{Fill Column (Optional):} A column containing values used to determine colors. This column is excluded from the hierarchical structure and is specified via the \code{fill_col} parameter. It can contain:
 #'     \itemize{
 #'       \item Numeric values (for continuous color scale mapping and node proportion recalculation).
@@ -492,7 +492,7 @@ kronar_plot <- function(df, count_col = NULL, fill_col = NULL, hier_cols = NULL,
 #'
 #' @param df A data frame.
 #' @param file Path to save the output file. If NULL, a temporary file path is generated.
-#' @param count_col Name or index of the count column.
+#' @param count_col Name or index of the numeric column containing pre-aggregated counts (abundances/weights).
 #' @param fill_col Name or index of the fill column.
 #' @param hier_cols Optional character vector of column names or numeric vector of column indices representing the hierarchical structure. If NULL, all columns except count_col and fill_col are used.
 #' @param fill_palette Optional custom color palette.
